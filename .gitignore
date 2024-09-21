@@ -1,0 +1,8 @@
+.mypy_cache
+.ruff_cache
+
+data/*.mat
+data/*.json
+
+/target
+*.png
