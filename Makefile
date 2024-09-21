@@ -56,3 +56,11 @@ release:		## Build project in release mode
 .PHONY: release
 
 # }}}
+
+clean:			## Remove temporary files
+	rm -rf *.mod
+.PHONY: clean
+
+purge: clean	## Remove all generated files
+	rm -rf target
+.PHONY: purge

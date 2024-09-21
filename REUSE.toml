@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+
+version = 1
+SPDX-PackageName = "polsys"
+SPDX-PackageSupplier = "Alexandru Fikl <alexfikl@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/alexfikl/polsys"
+
+[[annotations]]
+path = [".gitignore", ".github/**.yml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["Cargo.toml", "Cargo.lock", "Makefile", "README.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["polsys-plp/README"]
+SPDX-FileCopyrightText = "1998 Layne T. Watson, Steven M. Wise, Andrew J. Sommese"
+SPDX-License-Identifier = "LicenseRef-ACM"
+
+[[annotations]]
+path = ["polsys-plp/polsys_plp.f90", "polsys-plp/lapack_plp.f"]
+SPDX-FileCopyrightText = "1998 Layne T. Watson, Steven M. Wise, Andrew J. Sommese"
+SPDX-License-Identifier = "LicenseRef-ACM"

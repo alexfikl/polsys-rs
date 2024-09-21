@@ -7,3 +7,10 @@ edition = "2021"
 
 [build-dependencies]
 cc = { "version" = "1.1" }
+
+[package.metadata.typos.files]
+extend-exclude = [
+    "polsys-plp/README",
+    "polsys-plp/lapack_plp.f",
+    "polsys-plp/polsys_plp.f90",
+]
