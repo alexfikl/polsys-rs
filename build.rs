@@ -3,14 +3,27 @@
 
 fn main() {
     cc::Build::new()
-        .files(["polsys-plp/polsys_plp.f90", "polsys-plp/lapack_plp.f"])
+        .files([
+            "polsys-plp/polsys_plp.f90",
+            "polsys-plp/lapack_plp.f",
+            "polsys-plp/polsys_plp_wrapper.f90",
+        ])
         .compiler("gfortran")
-        .flag("-std=legacy")
-        .flag("-Wno-maybe-uninitialized") // suppress the maybe-uninitialized warnings
-        .flag("-O3") // optimize level 3
+        // .flag("-std=legacy")
+        .flag("-Wno-compare-reals")
+        .flag("-Wno-do-subscript")
+        .flag("-Wno-function-elimination")
+        .flag("-Wno-maybe-uninitialized")
+        .flag("-Wno-unused-dummy-argument")
+        .flag("-Wno-unused-label")
+        .flag("-Wno-tabs")
+        .flag("-O3")
         .static_flag(true)
+        .cargo_metadata(true)
         .compile("polsys_plp");
 
-    println!("cargo:rustc-link-search=native=polsys_plp");
-    println!("cargo:rustc-link-lib=static=polsys_plp");
+    println!("cargo::rustc-link-lib=gfortran");
+    println!("cargo::rerun-if-changed=polsys-plp/polsys_plp_wrapper.f90");
+    println!("cargo::rerun-if-changed=polsys-plp/polsys_plp.f90");
+    println!("cargo::rerun-if-changed=polsys-plp/lapack_plp.f");
 }

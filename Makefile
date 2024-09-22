@@ -14,7 +14,7 @@ format: rustfmt					## Run all formatting scripts
 .PHONY: format
 
 rustfmt:						## Run rustfmt
-	cargo fmt -- src/*.rs
+	cargo fmt -- --config 'max_width=88' src/*.rs
 	@echo -e "\e[1;32mrustfmt clean!\e[0m"
 .PHONY: rustfmt
 
