@@ -22,7 +22,7 @@ rustfmt:						## Run rustfmt
 
 # {{{ linting
 
-lint: typos reuse clippy		## Run linting checks
+lint: typos reuse clippy fortitude		## Run linting checks
 .PHONY: lint
 
 typos:			## Run typos over the source code and documentation
@@ -35,9 +35,16 @@ reuse:			## Check REUSE license compliance
 	@echo -e "\e[1;32mREUSE compliant!\e[0m"
 .PHONY: reuse
 
-clippy:			## Run clippy lint checks
+clippy:			## Run clippy lint checks (Rust)
 	cargo clippy --all-targets --all-features
 	@echo -e "\e[1;32mclippy clean!\e[0m"
+.PHONY: clippy
+
+fortitude:		## Run fortitude link checks (Fortran)
+	fortitude check --line-length 88 \
+		polsys-plp/polsys_plp_wrapper.f90
+	@echo -e "\e[1;32mclippy clean!\e[0m"
+.PHONY: fortitude
 
 # }}}
 
