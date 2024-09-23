@@ -2,7 +2,7 @@
 ! SPDX-License-Identifier: MIT
 
 module polsys_plp_wrapper
-    use :: POLSYS, only: POLYNOMIAL, PARTITION, PARTITION_SIZES
+    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES
     use, intrinsic :: iso_c_binding, only: c_int, c_double_complex
 
     implicit none
@@ -50,19 +50,19 @@ contains
         ! local variables
         integer :: i, j, k, n_i
 
-        write(0, *) "In 'init_polynomial'"
+        write (0, *) "In 'init_polynomial'"
 
         call CLEANUP_POL()
-        allocate(POLYNOMIAL(n))
+        allocate (POLYNOMIAL(n))
 
         k = 0
         do i = 1, n
             n_i = n_coeffs_per_eq(i)
             POLYNOMIAL(i)%NUM_TERMS = n_i
-            allocate(POLYNOMIAL(i)%TERM(n_i))
+            allocate (POLYNOMIAL(i)%TERM(n_i))
 
             do j = 1, n_i
-                allocate(POLYNOMIAL(i)%TERM(j)%DEG(n + 1))
+                allocate (POLYNOMIAL(i)%TERM(j)%DEG(n + 1))
                 POLYNOMIAL(i)%TERM(j)%COEF = coefficients(k)
                 POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees(k, 1:n)
                 k = k + 1
@@ -83,21 +83,21 @@ contains
         ! local variables
         integer :: i, j, n_i
 
-        write(0, *) "In 'init_partition'"
+        write (0, *) "In 'init_partition'"
 
         call CLEANUP_PAR()
 
-        allocate(PARTITION_SIZES(n))
+        allocate (PARTITION_SIZES(n))
         PARTITION_SIZES(1:n) = num_sets(1:n)
 
-        allocate(PARTITION(n))
+        allocate (PARTITION(n))
         do i = 1, n
-            allocate(PARTITION(i)%SET(NUM_SETS(i)))
+            allocate (PARTITION(i)%SET(NUM_SETS(i)))
 
             do j = 1, NUM_SETS(i)
                 n_i = num_indices(i, j)
 
-                allocate(PARTITION(i)%SET(j)%INDEX(n_i))
+                allocate (PARTITION(i)%SET(j)%INDEX(n_i))
                 PARTITION(i)%SET(j)%NUM_INDICES = n_i
                 PARTITION(i)%SET(j)%INDEX(1:n_i) = set_index(i, j, 1:n_i)
 

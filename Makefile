@@ -10,13 +10,19 @@ help: 			## Show this help
 
 # {{{ formatting
 
-format: rustfmt					## Run all formatting scripts
+format: rustfmt fprettify		## Run all formatting scripts
 .PHONY: format
 
 rustfmt:						## Run rustfmt
 	cargo fmt -- --config 'max_width=88' src/*.rs
 	@echo -e "\e[1;32mrustfmt clean!\e[0m"
 .PHONY: rustfmt
+
+fprettify: 						## Run fprettify
+	fprettify -i 4 -l 88 -w 3 \
+		polsys-plp/polsys_plp_wrapper.f90
+	@echo -e "\e[1;32mfprettify clean!\e[0m"
+.PHONY: fprettify
 
 # }}}
 
