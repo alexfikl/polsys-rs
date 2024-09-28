@@ -20,20 +20,21 @@ pub fn c64<T: Into<f64>>(re: T, im: T) -> c_double_complex {
 
 extern "C" {
     pub fn init_polynomial(
-        n: *const c_int,
+        n: c_int,
+        m: c_int,
         n_coeffs_per_eq: *const c_int,
         coefficients: *const c_double_complex,
         degrees: *const c_int,
         ierr: *mut c_int,
     );
 
-    pub fn init_partition(
-        n: *const c_int,
-        num_sets: *const c_int,
-        num_indices: *const c_int,
-        set_index: *const c_int,
-        ierr: *mut c_int,
-    );
+    // pub fn init_partition(
+    //     n: *const c_int,
+    //     num_sets: *const c_int,
+    //     num_indices: *const c_int,
+    //     set_index: *const c_int,
+    //     ierr: *mut c_int,
+    // );
 
     // pub fn bezout_plp_(
     //     n: *const c_int,

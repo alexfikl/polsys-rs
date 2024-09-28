@@ -6,7 +6,24 @@ module polsys_plp_wrapper
     use, intrinsic :: iso_c_binding, only: c_int, c_double_complex
 
     implicit none
+
 contains
+
+    subroutine reset_polynomial()
+        integer :: i, j
+
+        if (.not. allocated(POLYNOMIAL)) return
+
+        do i = 1, size(POLYNOMIAL)
+            do j = 1, POLYNOMIAL(i)%NUM_TERMS
+                deallocate(POLYNOMIAL(i)%TERM(j)%DEG)
+            end do
+
+            deallocate(POLYNOMIAL(i)%TERM)
+        end do
+
+        deallocate(POLYNOMIAL)
+    end subroutine
 
     !> @brief Initialize a polynomial from its coefficients.
     !!
@@ -26,6 +43,7 @@ contains
     !! in the POPLSYS library.
     !!
     !! @param[in] n                 number of equations and number of variables.
+    !! @param[in] m                 total number of coefficients
     !! @param[in] n_coeffs_per_eq   number of coefficients for each of the equations
     !!                              in the system. For the example above, we have
     !!                              a 3 coefficients in each equations, so this
@@ -39,23 +57,30 @@ contains
     !!                              two pairs
     !!                              [[2, 0], [0, 2], [0, 0], [1, 1], [0, 2], [0, 0]].
     !! @param[out] ierr             Error code.
-    subroutine init_polynomial(n, n_coeffs_per_eq, coefficients, degrees, ierr) bind(c)
+    subroutine init_polynomial(n, m, n_coeffs_per_eq, &
+                               coefficients, degrees, ierr) bind(c)
         ! routine arguments
-        integer(c_int), intent(in) :: n
+        integer(c_int), intent(in), value :: n
+        integer(c_int), intent(in), value :: m
         integer(c_int), dimension(n), intent(in) :: n_coeffs_per_eq
-        complex(c_double_complex), dimension(:), intent(in) :: coefficients
-        integer(c_int), dimension(:, :), intent(in) :: degrees
+        complex(c_double_complex), dimension(m), intent(in) :: coefficients
+        integer(c_int), dimension(n*m), intent(in) :: degrees
         integer(c_int), intent(out) :: ierr
 
         ! local variables
         integer :: i, j, k, n_i
+        integer(c_int), dimension(m, n) :: degrees_f
 
         write (0, *) "In 'init_polynomial'"
 
-        call CLEANUP_POL()
+        call reset_polynomial()
         allocate (POLYNOMIAL(n))
 
-        k = 0
+        ! FIXME: does this do a lot of memory copying? should be able to remove
+        ! this with a bit of fancy index juggling below
+        degrees_f = transpose(reshape(degrees, (/n, m/)))
+
+        k = 1
         do i = 1, n
             n_i = n_coeffs_per_eq(i)
             POLYNOMIAL(i)%NUM_TERMS = n_i
@@ -64,7 +89,8 @@ contains
             do j = 1, n_i
                 allocate (POLYNOMIAL(i)%TERM(j)%DEG(n + 1))
                 POLYNOMIAL(i)%TERM(j)%COEF = coefficients(k)
-                POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees(k, 1:n)
+                POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees_f(k, 1:n)
+                write (0, *) degrees_f(k, 1:n)
                 k = k + 1
             end do
         end do
@@ -72,41 +98,41 @@ contains
         ierr = 0
     end subroutine
 
-    subroutine init_partition(n, num_sets, num_indices, set_index, ierr) bind(c)
-        ! routine arguments
-        integer(c_int), intent(in) :: n
-        integer(c_int), dimension(:), intent(in) :: num_sets
-        integer(c_int), dimension(:, :), intent(in) :: num_indices
-        integer(c_int), dimension(:, :, :), intent(in) :: set_index
-        integer(c_int), intent(out) :: ierr
+    ! subroutine init_partition(n, num_sets, num_indices, set_index, ierr) bind(c)
+    !     ! routine arguments
+    !     integer(c_int), intent(in) :: n
+    !     integer(c_int), dimension(:), intent(in) :: num_sets
+    !     integer(c_int), dimension(:, :), intent(in) :: num_indices
+    !     integer(c_int), dimension(:, :, :), intent(in) :: set_index
+    !     integer(c_int), intent(out) :: ierr
 
-        ! local variables
-        integer :: i, j, n_i
+    !     ! local variables
+    !     integer :: i, j, n_i
 
-        write (0, *) "In 'init_partition'"
+    !     write (0, *) "In 'init_partition'"
 
-        call CLEANUP_PAR()
+    !     call CLEANUP_PAR()
 
-        allocate (PARTITION_SIZES(n))
-        PARTITION_SIZES(1:n) = num_sets(1:n)
+    !     allocate (PARTITION_SIZES(n))
+    !     PARTITION_SIZES(1:n) = num_sets(1:n)
 
-        allocate (PARTITION(n))
-        do i = 1, n
-            allocate (PARTITION(i)%SET(NUM_SETS(i)))
+    !     allocate (PARTITION(n))
+    !     do i = 1, n
+    !         allocate (PARTITION(i)%SET(NUM_SETS(i)))
 
-            do j = 1, NUM_SETS(i)
-                n_i = num_indices(i, j)
+    !         do j = 1, NUM_SETS(i)
+    !             n_i = num_indices(i, j)
 
-                allocate (PARTITION(i)%SET(j)%INDEX(n_i))
-                PARTITION(i)%SET(j)%NUM_INDICES = n_i
-                PARTITION(i)%SET(j)%INDEX(1:n_i) = set_index(i, j, 1:n_i)
+    !             allocate (PARTITION(i)%SET(j)%INDEX(n_i))
+    !             PARTITION(i)%SET(j)%NUM_INDICES = n_i
+    !             PARTITION(i)%SET(j)%INDEX(1:n_i) = set_index(i, j, 1:n_i)
 
-                ! NOTE: these are filled in by POLSYS_PLP during the solve
-                ! PARTITION(i)%SET(j)%SET_DEG = 0
-                ! PARTITION(i)%SET(j)%START_COEF = 0
-            end do
-        end do
+    !             ! NOTE: these are filled in by POLSYS_PLP during the solve
+    !             ! PARTITION(i)%SET(j)%SET_DEG = 0
+    !             ! PARTITION(i)%SET(j)%START_COEF = 0
+    !         end do
+    !     end do
 
-        ierr = 0
-    end subroutine
+    !     ierr = 0
+    ! end subroutine
 end module
