@@ -9,6 +9,7 @@ pub struct __BindgenComplex<T> {
     pub im: T,
 }
 
+#[allow(non_camel_case_types)]
 pub type c_double_complex = __BindgenComplex<f64>;
 
 pub fn c64<T: Into<f64>>(re: T, im: T) -> c_double_complex {
@@ -28,13 +29,15 @@ extern "C" {
         ierr: *mut c_int,
     );
 
-    // pub fn init_partition(
-    //     n: *const c_int,
-    //     num_sets: *const c_int,
-    //     num_indices: *const c_int,
-    //     set_index: *const c_int,
-    //     ierr: *mut c_int,
-    // );
+    pub fn init_partition(
+        n: c_int,
+        m: c_int,
+        p: c_int,
+        n_sets_per_partition: *const c_int,
+        n_indices_per_set: *const c_int,
+        indices: *const c_int,
+        ierr: *mut c_int,
+    );
 
     // pub fn bezout_plp_(
     //     n: *const c_int,

@@ -9,20 +9,39 @@ module polsys_plp_wrapper
 
 contains
 
-    subroutine reset_polynomial()
+    !> @brief Reset the global polynomial value.
+    !!
+    !! This is automatically called by `init_polynomial`.
+    subroutine reset_polynomial(ierr) bind(c)
+        ! routine arguments
+        integer(c_int), intent(out) :: ierr
+
+        ! local variables
         integer :: i, j
 
-        if (.not. allocated(POLYNOMIAL)) return
+        ierr = 0
+        if (allocated(POLYNOMIAL)) then
+            write (*, *) 'Resetting polynomial'
 
-        do i = 1, size(POLYNOMIAL)
-            do j = 1, POLYNOMIAL(i)%NUM_TERMS
-                deallocate(POLYNOMIAL(i)%TERM(j)%DEG)
+            do i = 1, size(POLYNOMIAL)
+                if (ASSOCIATED(POLYNOMIAL(i)%TERM)) then
+                    do j = 1, POLYNOMIAL(i)%NUM_TERMS
+                        if (ASSOCIATED(POLYNOMIAL(i)%TERM(j)%DEG)) then
+                            deallocate (POLYNOMIAL(i)%TERM(j)%DEG, stat=ierr)
+                            if (ierr .ne. 0) return
+                            nullify (POLYNOMIAL(i)%TERM(j)%DEG)
+                        end if
+                    end do
+
+                    deallocate (POLYNOMIAL(i)%TERM, stat=ierr)
+                    if (ierr .ne. 0) return
+                    nullify (POLYNOMIAL(i)%TERM)
+                end if
             end do
 
-            deallocate(POLYNOMIAL(i)%TERM)
-        end do
+            deallocate (POLYNOMIAL, stat=ierr)
+        end if
 
-        deallocate(POLYNOMIAL)
     end subroutine
 
     !> @brief Initialize a polynomial from its coefficients.
@@ -52,10 +71,13 @@ contains
     !!                              a total of `m = sum(n_coeffs_per_eq)`. For
     !!                              example, for the system above, this would be
     !!                              [3, 1, -1, 2, 1, -3]
-    !! @param[in] degrees           the degrees of each variable for each coefficient.
+    !! @param[in] degrees           the degrees of each variable for each coefficient
+    !!                              for a total of `n * m`.
     !!                              For example, for the system above, this would be
-    !!                              two pairs
-    !!                              [[2, 0], [0, 2], [0, 0], [1, 1], [0, 2], [0, 0]].
+    !!                              two pairs [2, 0, 0, 2, 0, 0, 1, 1, 0, 2, 0, 0],
+    !!                              i.e. for coefficient k and variable j, the
+    !!                              degree is `degrees(n * (k - 1) + j)` (starting
+    !!                              from k = j = 1).
     !! @param[out] ierr             Error code.
     subroutine init_polynomial(n, m, n_coeffs_per_eq, &
                                coefficients, degrees, ierr) bind(c)
@@ -69,28 +91,39 @@ contains
 
         ! local variables
         integer :: i, j, k, n_i
-        integer(c_int), dimension(m, n) :: degrees_f
 
-        write (0, *) "In 'init_polynomial'"
+        write (*, *) "Initializing polynomial"
 
-        call reset_polynomial()
-        allocate (POLYNOMIAL(n))
+        if (m .ne. sum(n_coeffs_per_eq)) then
+            ierr = 20
+            return
+        end if
 
-        ! FIXME: does this do a lot of memory copying? should be able to remove
-        ! this with a bit of fancy index juggling below
-        degrees_f = transpose(reshape(degrees, (/n, m/)))
+        call reset_polynomial(ierr)
+        if (ierr .ne. 0) then
+            ! NOTE: bumping the error codes so we distinguish deallocation form
+            ! allocation errors in the calling code
+            ierr = ierr + 10
+            return
+        end if
+
+        allocate (POLYNOMIAL(n), stat=ierr)
+        if (ierr .ne. 0) return
 
         k = 1
         do i = 1, n
             n_i = n_coeffs_per_eq(i)
             POLYNOMIAL(i)%NUM_TERMS = n_i
-            allocate (POLYNOMIAL(i)%TERM(n_i))
+            allocate (POLYNOMIAL(i)%TERM(n_i), stat=ierr)
+            if (ierr .ne. 0) return
 
             do j = 1, n_i
-                allocate (POLYNOMIAL(i)%TERM(j)%DEG(n + 1))
+                allocate (POLYNOMIAL(i)%TERM(j)%DEG(n + 1), stat=ierr)
+                if (ierr .ne. 0) return
+
                 POLYNOMIAL(i)%TERM(j)%COEF = coefficients(k)
-                POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees_f(k, 1:n)
-                write (0, *) degrees_f(k, 1:n)
+                POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees(n * (k - 1) + 1:n * k)
+                write (0, *) degrees(n * (k - 1) + 1:n * k)
                 k = k + 1
             end do
         end do
@@ -98,41 +131,116 @@ contains
         ierr = 0
     end subroutine
 
-    ! subroutine init_partition(n, num_sets, num_indices, set_index, ierr) bind(c)
-    !     ! routine arguments
-    !     integer(c_int), intent(in) :: n
-    !     integer(c_int), dimension(:), intent(in) :: num_sets
-    !     integer(c_int), dimension(:, :), intent(in) :: num_indices
-    !     integer(c_int), dimension(:, :, :), intent(in) :: set_index
-    !     integer(c_int), intent(out) :: ierr
+    !> @brief Reset the global partition.
+    !!
+    !! This is automatically called by `init_partition`.
+    subroutine reset_partition(ierr) bind(c)
+        ! routine arguments
+        integer(c_int), intent(out) :: ierr
 
-    !     ! local variables
-    !     integer :: i, j, n_i
+        ! local variables
+        integer :: i, j
 
-    !     write (0, *) "In 'init_partition'"
+        ierr = 0
+        if (allocated(PARTITION)) then
+            write (0, *) "Resetting partition"
 
-    !     call CLEANUP_PAR()
+            do i = 1, size(PARTITION)
+                if (associated(PARTITION(i)%SET)) then
+                    do j = 1, PARTITION(i)%SET(j)%NUM_INDICES
+                        if (associated(PARTITION(i)%SET(j)%INDEX)) then
+                            deallocate (PARTITION(i)%SET(j)%INDEX, stat=ierr)
+                            if (ierr .ne. 0) return
+                            nullify (PARTITION(i)%SET(j)%INDEX)
+                        end if
 
-    !     allocate (PARTITION_SIZES(n))
-    !     PARTITION_SIZES(1:n) = num_sets(1:n)
+                        if (associated(PARTITION(i)%SET(j)%START_COEF)) then
+                            deallocate (PARTITION(i)%SET(j)%START_COEF, stat=ierr)
+                            if (ierr .ne. 0) return
+                            nullify (PARTITION(i)%SET(j)%START_COEF)
+                        end if
+                    end do
 
-    !     allocate (PARTITION(n))
-    !     do i = 1, n
-    !         allocate (PARTITION(i)%SET(NUM_SETS(i)))
+                    deallocate (PARTITION(i)%SET, stat=ierr)
+                    if (ierr .ne. 0) return
+                    nullify (PARTITION(i)%SET)
+                end if
+            end do
 
-    !         do j = 1, NUM_SETS(i)
-    !             n_i = num_indices(i, j)
+            deallocate (PARTITION, stat=ierr)
+            if (ierr .ne. 0) return
+        end if
 
-    !             allocate (PARTITION(i)%SET(j)%INDEX(n_i))
-    !             PARTITION(i)%SET(j)%NUM_INDICES = n_i
-    !             PARTITION(i)%SET(j)%INDEX(1:n_i) = set_index(i, j, 1:n_i)
+        if (allocated(PARTITION_SIZES)) then
+            deallocate (PARTITION_SIZES, stat=ierr)
+            if (ierr .ne. 0) return
+        end if
+    end subroutine
 
-    !             ! NOTE: these are filled in by POLSYS_PLP during the solve
-    !             ! PARTITION(i)%SET(j)%SET_DEG = 0
-    !             ! PARTITION(i)%SET(j)%START_COEF = 0
-    !         end do
-    !     end do
+    !> @brief Initialize the global partition.
+    !!
+    !! @param[in] n         number of equations and variables
+    !! @param[in] m         max number of sets per partition
+    !! @param[in] p         max number of indices per set
+    subroutine init_partition(n, m, p, n_sets_per_partition, n_indices_per_set, &
+                              indices, ierr) bind(c)
+        ! routine arguments
+        integer(c_int), intent(in), value :: n
+        integer(c_int), intent(in), value :: m
+        integer(c_int), intent(in), value :: p
+        integer(c_int), dimension(n), intent(in) :: n_sets_per_partition
+        integer(c_int), dimension(n*m), intent(in) :: n_indices_per_set
+        integer(c_int), dimension(n*m*p), intent(in) :: indices
+        integer(c_int), intent(out) :: ierr
 
-    !     ierr = 0
-    ! end subroutine
+        ! local variables
+        integer :: i, j, k, n_i, n_j
+
+        write (0, *) "Initializing partition"
+
+        call reset_partition(ierr)
+        if (ierr .ne. 0) then
+            ! NOTE: bumping the error codes so we distinguish deallocation form
+            ! allocation errors in the calling code
+            ierr = ierr + 10
+            return
+        end if
+
+        allocate (PARTITION_SIZES(n), stat=ierr)
+        if (ierr .ne. 0) return
+
+        allocate (PARTITION(n), stat=ierr)
+        if (ierr .ne. 0) return
+
+        k = 1
+        PARTITION_SIZES(1:n) = n_sets_per_partition(1:n)
+        do i = 1, n             ! for each partition
+            n_i = n_sets_per_partition(i)
+            allocate (PARTITION(i)%SET(n_i), stat=ierr)
+            if (ierr .ne. 0) return
+
+            write (*, *) n_i
+
+            do j = 1, n_i       ! for each set in the partition
+                n_j = n_indices_per_set(m * (i - 1) + j)
+                write (*, *) n_j
+
+                allocate (PARTITION(i)%SET(j)%INDEX(n_j), stat=ierr)
+                if (ierr .ne. 0) return
+
+                PARTITION(i)%SET(j)%NUM_INDICES = n_j
+                PARTITION(i)%SET(j)%INDEX(1:n_j) = indices(k:k + n_j)
+
+                write (*, *) PARTITION(i)%SET(j)%INDEX
+
+                ! NOTE: these are filled in by POLSYS_PLP during the solve
+                ! PARTITION(i)%SET(j)%SET_DEG = 0
+                ! PARTITION(i)%SET(j)%START_COEF = 0
+
+                k = k + n_j
+            end do
+        end do
+
+        ierr = 0
+    end subroutine
 end module
