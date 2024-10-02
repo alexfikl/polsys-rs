@@ -1,30 +1,16 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
+use num::complex::Complex64;
+
 use std::ffi::c_int;
-
-#[repr(C)]
-pub struct __BindgenComplex<T> {
-    pub re: T,
-    pub im: T,
-}
-
-#[allow(non_camel_case_types)]
-pub type c_double_complex = __BindgenComplex<f64>;
-
-pub fn c64<T: Into<f64>>(re: T, im: T) -> c_double_complex {
-    __BindgenComplex {
-        re: re.into(),
-        im: im.into(),
-    }
-}
 
 extern "C" {
     pub fn init_polynomial(
         n: c_int,
         m: c_int,
         n_coeffs_per_eq: *const c_int,
-        coefficients: *const c_double_complex,
+        coefficients: *const Complex64,
         degrees: *const c_int,
         ierr: *mut c_int,
     );

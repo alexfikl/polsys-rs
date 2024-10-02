@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 mod bindings;
+mod plp;
 
-use bindings::c64;
+use std::collections::HashMap;
+
+use num::complex::c64;
 
 fn main() {
     let mut ierr: i32 = 0;
@@ -18,6 +21,21 @@ fn main() {
         c64(-3.0, 1.0),
     ];
     let degrees = [[2, 0], [0, 2], [0, 0], [1, 1], [0, 2], [0, 0]].as_flattened();
+
+    let mut poly = plp::Polynomial::new(vec![
+        HashMap::from([
+            ([2, 0], c64(3.0, 1.3)),
+            ([0, 2], c64(1.0, 0.1)),
+            ([0, 0], c64(-1.0, 0.2)),
+        ]),
+        HashMap::from([
+            ([1, 1], c64(2.0, 0.5)),
+            ([0, 2], c64(1.0, 0.5)),
+            ([0, 0], c64(-3.0, 1.0)),
+        ]),
+    ]);
+    poly.init().unwrap();
+    println!("{}: {}", poly.is_initialized, poly.len());
 
     unsafe {
         bindings::init_polynomial(

@@ -1,6 +1,114 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
+use num::complex::Complex64;
+use std::collections::HashMap;
+
+use crate::bindings;
+
+// {{{ InitializeError
+
+#[derive(Debug)]
+pub enum InitializeError {
+    /// Error in system routine attempting to do allocation.
+    SystemAllocateFailed = 1,
+    /// An invalid data object has been specified for allocation.
+    InvalidAllocateObject = 2,
+    /// Both system and object errors in allocation.
+    AllocateFailed = 3,
+    /// Error in system routine attempting to do deallocation.
+    SystemDeallocateFailed = 11,
+    /// An invalid data object has been specified for deallocation.
+    InvalidDeallocateObject = 12,
+    /// Both system and object errors in deallocation.
+    DeallocateFailed = 13,
+}
+
+impl From<i32> for InitializeError {
+    fn from(flag: i32) -> Self {
+        match flag {
+            1 => InitializeError::SystemAllocateFailed,
+            2 => InitializeError::InvalidAllocateObject,
+            3 => InitializeError::AllocateFailed,
+            11 => InitializeError::SystemDeallocateFailed,
+            12 => InitializeError::InvalidDeallocateObject,
+            13 => InitializeError::DeallocateFailed,
+            _ => panic!("Unknown InitializeError value: {}", flag),
+        }
+    }
+}
+
+// }}}
+
+// {{{ Polynomial
+
+#[derive(Clone, Debug)]
+pub struct Polynomial<const N: usize> {
+    coefficients: Vec<HashMap<[i32; N], Complex64>>,
+    pub is_initialized: bool,
+}
+
+impl<const N: usize> Polynomial<N> {
+    pub fn new(coefficients: Vec<HashMap<[i32; N], Complex64>>) -> Self {
+        Polynomial {
+            coefficients,
+            is_initialized: false,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.coefficients.len()
+    }
+
+    pub fn init(&mut self) -> Result<&mut Self, InitializeError> {
+        if self.is_initialized {
+            return Ok(self);
+        }
+
+        let mut ierr: i32 = 0;
+        let n_coeffs_per_eq: Vec<i32> =
+            self.coefficients.iter().map(|c| c.len() as i32).collect();
+
+        let n = self.len() as i32;
+        let m = n_coeffs_per_eq.iter().sum::<i32>();
+        let mut coefficients: Vec<Complex64> = Vec::with_capacity(m as usize);
+        let mut degrees: Vec<i32> = Vec::with_capacity((n * m) as usize);
+
+        for p in self.coefficients.iter() {
+            for (degree, c) in p.iter() {
+                coefficients.push(*c);
+                degrees.extend(degree.iter());
+            }
+        }
+
+        unsafe {
+            bindings::init_polynomial(
+                n,
+                m,
+                n_coeffs_per_eq.as_ptr(),
+                coefficients.as_ptr(),
+                degrees.as_ptr(),
+                &mut ierr,
+            )
+        }
+
+        if ierr == 0 {
+            self.is_initialized = true;
+            Ok(self)
+        } else {
+            Err(InitializeError::from(ierr))
+        }
+    }
+}
+
+// }}}
+
+// {{{ Partition
+
+// }}}
+
+// {{{ SolveError
+
 pub enum SolverError {
     /// Dimensions of inputs do not match.
     DimensionMismatch = -1,
@@ -28,7 +136,7 @@ impl From<i32> for SolverError {
             -5 => SolverError::RepeatedPartition,
             -6 => SolverError::InconsistentRecall,
             -7 => SolverError::InsufficientScaleFactors,
-            _ => panic!("Unknown ErrorFlag value: {}", flag),
+            _ => panic!("Unknown SolverError value: {}", flag),
         }
     }
 }
@@ -54,6 +162,7 @@ pub enum PathTrackingError {
 impl From<i32> for PathTrackingError {
     fn from(flag: i32) -> Self {
         match flag {
+            -2 => PathTrackingError::PathRetracked,
             2 => PathTrackingError::TrackingToleranceFailed,
             3 => PathTrackingError::MaximumStepsExceeded,
             4 => PathTrackingError::BadJacobian,
@@ -66,3 +175,9 @@ impl From<i32> for PathTrackingError {
 }
 
 pub type PathTrackingResult = Result<u32, PathTrackingError>;
+
+// }}}
+
+// {{{ Solve
+
+// }}}
