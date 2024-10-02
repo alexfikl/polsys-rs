@@ -3,11 +3,23 @@
 
 module polsys_plp_wrapper
     use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES
-    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex
+    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex, c_double
 
     implicit none
 
+    interface
+        subroutine BEZOUT_PLP(N, MAXT, TOL, BPLP)
+            use REAL_PRECISION, ONLY: R8
+
+            INTEGER, INTENT(IN):: N, MAXT
+            REAL(KIND=R8), INTENT(IN OUT):: TOL
+            INTEGER, INTENT(OUT):: BPLP
+        end subroutine
+    end interface
+
 contains
+
+    ! {{{ Polynomial
 
     !> @brief Reset the global polynomial value.
     !!
@@ -131,6 +143,10 @@ contains
         ierr = 0
     end subroutine
 
+    ! }}}
+
+    ! {{{ Partition
+
     !> @brief Reset the global partition.
     !!
     !! This is automatically called by `init_partition`.
@@ -243,4 +259,44 @@ contains
 
         ierr = 0
     end subroutine
+
+    ! }}}
+
+    ! {{{ Bezout
+
+    subroutine bezout_plp_wrapper(n, maxt, tol, bplp, ierr) bind(c)
+        ! routine arguments
+        integer(c_int), intent(in), value :: n
+        integer(c_int), intent(in), value :: maxt
+        real(c_double), intent(in), value:: tol
+        integer(c_int), intent(out) :: bplp
+        integer(c_int), intent(out) :: ierr
+
+        ! local variables
+        real(c_double) :: tol_plp
+
+        ierr = 0
+        bplp = 0
+
+        if (tol .le. 0.0_c_double) then
+            ierr = 1
+            return
+        end if
+
+        if (.not. allocated(POLYNOMIAL)) then
+            ierr = 2
+            return
+        end if
+
+        if (.not. allocated(PARTITION_SIZES) .or. .not. allocated(PARTITION)) then
+            ierr = 3
+            return
+        end if
+
+        tol_plp = tol
+        call BEZOUT_PLP(n, maxt, tol_plp, bplp)
+
+    end subroutine
+
+    ! }}}
 end module

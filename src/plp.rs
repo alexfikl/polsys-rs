@@ -44,20 +44,47 @@ impl From<i32> for InitializeError {
 
 #[derive(Clone, Debug)]
 pub struct Polynomial<const N: usize> {
-    coefficients: Vec<HashMap<[i32; N], Complex64>>,
-    pub is_initialized: bool,
+    /// A full description of the polynomial system as a vector of mappings from
+    /// degree tuples (i_0, i_1, ..., i_n) to complex coefficients.
+    system: Vec<HashMap<[i32; N], Complex64>>,
+
+    /// Number of coefficients per equation. This can be used to slice into the
+    /// coefficients and degrees arrays.
+    n_coeffs_per_eq: Vec<i32>,
+    /// A flat list of complex coefficients for the whole system, i.e. the first
+    /// `n_coeffs_per_eq[0]` coefficients belong to the first equation.
+    coefficients: Vec<Complex64>,
+    /// A flat list of degrees for the whole system, i.e. the first
+    /// `n * n_coeffs_per_eq[0]` degrees belong to the first equation.
+    degrees: Vec<i32>,
+
+    /// A flag to denote that the polynomial was correctly initialized.
+    is_initialized: bool,
 }
 
 impl<const N: usize> Polynomial<N> {
-    pub fn new(coefficients: Vec<HashMap<[i32; N], Complex64>>) -> Self {
+    pub fn new(system: Vec<HashMap<[i32; N], Complex64>>) -> Self {
+        let n_coeffs_per_eq: Vec<i32> = system.iter().map(|c| c.len() as i32).collect();
+
+        let n = system.len() as i32;
+        let m = n_coeffs_per_eq.iter().sum::<i32>();
+        let mut coefficients: Vec<Complex64> = Vec::with_capacity(m as usize);
+        let mut degrees: Vec<i32> = Vec::with_capacity((n * m) as usize);
+
+        for p in system.iter() {
+            for (degree, c) in p.iter() {
+                coefficients.push(*c);
+                degrees.extend(degree.iter());
+            }
+        }
+
         Polynomial {
+            system,
+            n_coeffs_per_eq,
             coefficients,
+            degrees,
             is_initialized: false,
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.coefficients.len()
     }
 
     pub fn init(&mut self) -> Result<&mut Self, InitializeError> {
@@ -66,28 +93,14 @@ impl<const N: usize> Polynomial<N> {
         }
 
         let mut ierr: i32 = 0;
-        let n_coeffs_per_eq: Vec<i32> =
-            self.coefficients.iter().map(|c| c.len() as i32).collect();
-
-        let n = self.len() as i32;
-        let m = n_coeffs_per_eq.iter().sum::<i32>();
-        let mut coefficients: Vec<Complex64> = Vec::with_capacity(m as usize);
-        let mut degrees: Vec<i32> = Vec::with_capacity((n * m) as usize);
-
-        for p in self.coefficients.iter() {
-            for (degree, c) in p.iter() {
-                coefficients.push(*c);
-                degrees.extend(degree.iter());
-            }
-        }
 
         unsafe {
             bindings::init_polynomial(
-                n,
-                m,
-                n_coeffs_per_eq.as_ptr(),
-                coefficients.as_ptr(),
-                degrees.as_ptr(),
+                self.system.len() as i32,
+                self.coefficients.len() as i32,
+                self.n_coeffs_per_eq.as_ptr(),
+                self.coefficients.as_ptr(),
+                self.degrees.as_ptr(),
                 &mut ierr,
             )
         }
@@ -99,11 +112,48 @@ impl<const N: usize> Polynomial<N> {
             Err(InitializeError::from(ierr))
         }
     }
+
+    pub fn degrees(&self) -> Vec<i32> {
+        let n = self.system.len();
+
+        self.n_coeffs_per_eq
+            .iter()
+            .scan(0, |start, &m| {
+                let from = *start as usize;
+                let to = (*start + m) as usize;
+                *start = to as i32;
+
+                Some(
+                    self.degrees[(n * from)..(n * to)]
+                        .chunks(n)
+                        .map(|chunk| chunk.iter().sum())
+                        .max(),
+                )
+            })
+            .map(|d| d.unwrap())
+            .collect()
+    }
+
+    pub fn total_degree(&self) -> i32 {
+        self.degrees().iter().product()
+    }
+
+    pub fn len(&self) -> usize {
+        self.system.len()
+    }
 }
 
 // }}}
 
 // {{{ Partition
+
+pub struct Partition {}
+
+pub fn make_homogeneous_partition() {}
+
+pub fn make_m_homogeneous_partition() {}
+
+pub fn make_plp_homogeneous_partition() {}
 
 // }}}
 

@@ -35,18 +35,11 @@ fn main() {
         ]),
     ]);
     poly.init().unwrap();
-    println!("{}: {}", poly.is_initialized, poly.len());
+    println!("System size: {}", poly.len());
+    println!("System degrees: {:?}", poly.degrees());
+    println!("Total degree: {}", poly.total_degree());
 
     unsafe {
-        bindings::init_polynomial(
-            n,
-            coefficients.len() as i32,
-            n_coeffs_per_eq.as_ptr(),
-            coefficients.as_ptr(),
-            degrees.as_ptr(),
-            &mut ierr,
-        );
-
         bindings::init_polynomial(
             n,
             coefficients.len() as i32,
