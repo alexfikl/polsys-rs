@@ -52,6 +52,14 @@ fn main() {
 
     println!("ierr: {}", ierr);
 
+    let mut part = plp::make_homogeneous_partition(3);
+    part.init().unwrap();
+    println!("n_sets_per_partition: {:?}", part.n_sets_per_partition);
+
+    let mut part = plp::make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]);
+    part.init().unwrap();
+    println!("n_sets_per_partition: {:?}", part.n_sets_per_partition);
+
     let n_sets_per_partition = [2, 2, 2, 2, 2, 2, 2, 2];
     let n_indices_per_set = [
         [4, 4],

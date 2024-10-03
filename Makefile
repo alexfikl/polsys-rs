@@ -28,7 +28,7 @@ fprettify: 						## Run fprettify
 
 # {{{ linting
 
-lint: typos reuse clippy fortitude		## Run linting checks
+lint: typos reuse fortitude clippy		## Run linting checks
 .PHONY: lint
 
 typos:			## Run typos over the source code and documentation
@@ -48,6 +48,7 @@ clippy:			## Run clippy lint checks (Rust)
 
 fortitude:		## Run fortitude link checks (Fortran)
 	fortitude check --line-length 88 \
+		--ignore T032 \
 		polsys-plp/polsys_plp_wrapper.f90
 	@echo -e "\e[1;32mclippy clean!\e[0m"
 .PHONY: fortitude

@@ -3,42 +3,192 @@
 
 use num::complex::Complex64;
 use std::collections::HashMap;
+use std::fmt;
+use std::iter;
 
 use crate::bindings;
 
-// {{{ InitializeError
+/// {{{ Errors
 
 #[derive(Debug)]
-pub enum InitializeError {
+pub enum PolsysError {
+    /// Error flag returned from the Fortran library when there is no error. This
+    /// should never be returned by the Rust wrappers in this library.
+    NoError = 0,
+    /// Unknown error
+    UnknownError = 1024,
+
     /// Error in system routine attempting to do allocation.
-    SystemAllocateFailed = 1,
+    AllocateSystemFailed = 1,
     /// An invalid data object has been specified for allocation.
-    InvalidAllocateObject = 2,
+    AllocateInvalidObject = 2,
     /// Both system and object errors in allocation.
     AllocateFailed = 3,
     /// Error in system routine attempting to do deallocation.
-    SystemDeallocateFailed = 11,
+    DeallocateSystemFailed = 4,
     /// An invalid data object has been specified for deallocation.
-    InvalidDeallocateObject = 12,
+    DeallocateInvalidObject = 5,
     /// Both system and object errors in deallocation.
-    DeallocateFailed = 13,
+    DeallocateFailed = 6,
+
+    /// Dimensions or setup of input polynomial and partition do not match.
+    PolynomialInvalid = -1,
+    /// Terms with negative powers found in the polynomial.
+    NegativePower = -2,
+    /// One of the equations in the system is a constant.
+    ConstantEquation = -3,
+    /// Partition sizes do not add up to the number of equations.
+    InconsistentPartitionSize = -4,
+    /// A partition is defined more than once.
+    RepeatedPartition = -5,
+    /// Array sizes used for recall do not have valid sizes.
+    InconsistentRecall = -6,
+    /// Number of scale factors does not match number of equations.
+    InsufficientScaleFactors = -7,
 }
 
-impl From<i32> for InitializeError {
+impl From<i32> for PolsysError {
     fn from(flag: i32) -> Self {
         match flag {
-            1 => InitializeError::SystemAllocateFailed,
-            2 => InitializeError::InvalidAllocateObject,
-            3 => InitializeError::AllocateFailed,
-            11 => InitializeError::SystemDeallocateFailed,
-            12 => InitializeError::InvalidDeallocateObject,
-            13 => InitializeError::DeallocateFailed,
-            _ => panic!("Unknown InitializeError value: {}", flag),
+            // initialization errors (returned by `init_polynomial`)
+            0 => PolsysError::NoError,
+            1 => PolsysError::AllocateSystemFailed,
+            2 => PolsysError::AllocateInvalidObject,
+            3 => PolsysError::AllocateFailed,
+            11 => PolsysError::DeallocateSystemFailed,
+            12 => PolsysError::DeallocateInvalidObject,
+            13 => PolsysError::DeallocateFailed,
+            // solver errors (returned by `polsys_plp`)
+            -1 => PolsysError::PolynomialInvalid,
+            -2 => PolsysError::NegativePower,
+            -3 => PolsysError::ConstantEquation,
+            -4 => PolsysError::InconsistentPartitionSize,
+            -5 => PolsysError::RepeatedPartition,
+            -6 => PolsysError::InconsistentRecall,
+            -7 => PolsysError::InsufficientScaleFactors,
+            _ => PolsysError::UnknownError,
         }
     }
 }
 
-// }}}
+impl PolsysError {
+    fn as_str(&self) -> &'static str {
+        match *self {
+            PolsysError::NoError => "Finished successfully",
+            PolsysError::UnknownError => "Unknown error ocured",
+            PolsysError::AllocateSystemFailed => {
+                "Error in system routine attempting to do allocation"
+            }
+            PolsysError::AllocateInvalidObject => {
+                "An invalid data object has been specified for allocation"
+            }
+            PolsysError::AllocateFailed => {
+                "Failed to allocate invalid object"
+            }
+            PolsysError::DeallocateSystemFailed => {
+                "Error in system routine attempting to do deallocation"
+            }
+            PolsysError::DeallocateInvalidObject => {
+                "An invalid data object has been specified for deallocation"
+            }
+            PolsysError::DeallocateFailed => {
+                "Failed to allocate invalid object"
+            }
+            PolsysError::PolynomialInvalid => {
+                "Input polynomial and partitions dimensions or coefficient counts do not match"
+            }
+            PolsysError::NegativePower => {
+                "Input polynomial has negative powers"
+            }
+            PolsysError::ConstantEquation => {
+                "Constant equation (all degrees are zero)"
+            }
+            PolsysError::InconsistentPartitionSize => {
+                "Partition sizes do not match up to system size"
+            }
+            PolsysError::RepeatedPartition => {
+                "Repeated terms present in the partition"
+            }
+            PolsysError::InconsistentRecall => {
+                "Recall is not consistent (BPLP differs)"
+            }
+            PolsysError::InsufficientScaleFactors => {
+                "Less scale factors specified than system size"
+            }
+        }
+    }
+}
+
+impl fmt::Display for PolsysError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.as_str())
+    }
+}
+
+pub enum PathTrackingError {
+    /// An unnknown flag returned by the routine.
+    UnknownError = -1,
+
+    /// Tracking tolerance was not met (should re-run with a higher tolerance).
+    TrackingToleranceFailed = 2,
+    /// Maximum number of steps allowed was exceeded.
+    MaximumStepsExceeded = 3,
+    /// Jacobian does not have full rank.
+    BadJacobian = 4,
+    /// The tracking algorithm has lost the zero curve of the homotopy map and
+    /// is not making progress.
+    ZeroCurveLost = 5,
+    /// Normal flow Newton iteration failed to converge.
+    NewtonConvergenceFailed = 6,
+    /// Failed to find a root.
+    RootSearchFailed = 7,
+}
+
+impl PathTrackingError {
+    fn as_str(&self) -> &'static str {
+        match *self {
+            PathTrackingError::UnknownError => "An unknown error has occurred",
+            PathTrackingError::TrackingToleranceFailed => "The specified error tolerance could not be met (increase TRACKTOL)",
+            PathTrackingError::MaximumStepsExceeded => "The maximum number of steps allowed was exceeded (increase NUMRR)",
+            PathTrackingError::BadJacobian => "The Jacobian matrix does not have full rank (the zero curve of the homotopy map cannot be followed any further)",
+            PathTrackingError::ZeroCurveLost => "The zero curve of the homotopy has been lost and no progress can be made (TRACKTOL and FINALTOL may be too lenient)",
+            PathTrackingError::NewtonConvergenceFailed => "The normal flow Newton iteration failed to converge (TRACKTOL or FINALTOL may be too stringent)",
+            PathTrackingError::RootSearchFailed => "Failed to find a root in 10*NUMRR iterations"
+        }
+    }
+}
+
+impl fmt::Display for PathTrackingError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.as_str())
+    }
+}
+
+pub struct PathTrackingResult(Result<u32, PathTrackingError>);
+
+impl From<i32> for PathTrackingResult {
+    fn from(flag: i32) -> Self {
+        let result = match flag {
+            2 => Err(PathTrackingError::TrackingToleranceFailed),
+            3 => Err(PathTrackingError::MaximumStepsExceeded),
+            4 => Err(PathTrackingError::BadJacobian),
+            5 => Err(PathTrackingError::ZeroCurveLost),
+            6 => Err(PathTrackingError::NewtonConvergenceFailed),
+            7 => Err(PathTrackingError::RootSearchFailed),
+            n => {
+                if n > 10 {
+                    Ok(((n - 1) / 10) as u32)
+                } else {
+                    Err(PathTrackingError::UnknownError)
+                }
+            }
+        };
+
+        PathTrackingResult(result)
+    }
+}
+
+/// }}}
 
 // {{{ Polynomial
 
@@ -87,7 +237,7 @@ impl<const N: usize> Polynomial<N> {
         }
     }
 
-    pub fn init(&mut self) -> Result<&mut Self, InitializeError> {
+    pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
         if self.is_initialized {
             return Ok(self);
         }
@@ -109,7 +259,7 @@ impl<const N: usize> Polynomial<N> {
             self.is_initialized = true;
             Ok(self)
         } else {
-            Err(InitializeError::from(ierr))
+            Err(PolsysError::from(ierr))
         }
     }
 
@@ -147,87 +297,76 @@ impl<const N: usize> Polynomial<N> {
 
 // {{{ Partition
 
-pub struct Partition {}
+pub struct Partition {
+    /// Number of sets per partition.
+    pub m: usize,
+    /// Number of indices per set.
+    pub p: usize,
+    pub n_sets_per_partition: Vec<i32>,
+    pub n_indices_per_set: Vec<i32>,
+    pub indices: Vec<i32>,
 
-pub fn make_homogeneous_partition() {}
-
-pub fn make_m_homogeneous_partition() {}
-
-pub fn make_plp_homogeneous_partition() {}
-
-// }}}
-
-// {{{ SolveError
-
-pub enum SolverError {
-    /// Dimensions of inputs do not match.
-    DimensionMismatch = -1,
-    /// Terms with negative powers found in the polynomial.
-    NegativePower = -2,
-    /// One of the equations in the system is a constant.
-    ConstantEquation = -3,
-    /// Partition sizes do not add up to the number of equations.
-    InconsistentPartitionSize = -4,
-    /// A partition is defined more than once.
-    RepeatedPartition = -5,
-    /// Array sizes used for recall do not have valid sizes.
-    InconsistentRecall = -6,
-    /// Number of scale factors does not match number of equations.
-    InsufficientScaleFactors = -7,
+    pub is_initialized: bool,
 }
 
-impl From<i32> for SolverError {
-    fn from(flag: i32) -> Self {
-        match flag {
-            -1 => SolverError::DimensionMismatch,
-            -2 => SolverError::NegativePower,
-            -3 => SolverError::ConstantEquation,
-            -4 => SolverError::InconsistentPartitionSize,
-            -5 => SolverError::RepeatedPartition,
-            -6 => SolverError::InconsistentRecall,
-            -7 => SolverError::InsufficientScaleFactors,
-            _ => panic!("Unknown SolverError value: {}", flag),
+impl Partition {
+    pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
+        if self.is_initialized {
+            return Ok(self);
         }
+
+        let mut ierr: i32 = 0;
+
+        unsafe {
+            bindings::init_partition(
+                self.len() as i32,
+                self.m as i32,
+                self.p as i32,
+                self.n_sets_per_partition.as_ptr(),
+                self.n_indices_per_set.as_ptr(),
+                self.indices.as_ptr(),
+                &mut ierr,
+            )
+        }
+
+        if ierr == 0 {
+            self.is_initialized = true;
+            Ok(self)
+        } else {
+            Err(PolsysError::from(ierr))
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.n_sets_per_partition.len()
     }
 }
 
-pub enum PathTrackingError {
-    /// The i-th homotopy path should be re-tracked.
-    PathRetracked = -2,
-    /// Tracking tolerance was not met (should re-run with a higher tolerance).
-    TrackingToleranceFailed = 2,
-    /// Maximum number of steps allowed was exceeded.
-    MaximumStepsExceeded = 3,
-    /// Jacobian does not have full rank.
-    BadJacobian = 4,
-    /// The tracking algorithm has lost the zero curve of the homotopy map and
-    /// is not making progress.
-    ZeroCurveLost = 5,
-    /// Normal flow Newton iteration failed to converge.
-    NewtonConvergenceFailed = 6,
-    /// Failed to find a root.
-    RootSearchFailed = 7,
-}
+pub fn make_m_homogeneous_partition(n: usize, part: Vec<Vec<u32>>) -> Partition {
+    let m = part.len();
+    let p = 10;
+    let n_sets_per_partition = iter::repeat(m as i32).take(n).collect();
+    let n_indices_per_set_eq: Vec<i32> = part.iter().map(|x| x.len() as i32).collect();
+    let n_indices_per_set = (0..n).flat_map(|_| n_indices_per_set_eq.clone()).collect();
+    let indices = (0..n)
+        .flat_map(|_| part.iter().flatten())
+        .map(|x| *x as i32)
+        .collect();
 
-impl From<i32> for PathTrackingError {
-    fn from(flag: i32) -> Self {
-        match flag {
-            -2 => PathTrackingError::PathRetracked,
-            2 => PathTrackingError::TrackingToleranceFailed,
-            3 => PathTrackingError::MaximumStepsExceeded,
-            4 => PathTrackingError::BadJacobian,
-            5 => PathTrackingError::ZeroCurveLost,
-            6 => PathTrackingError::NewtonConvergenceFailed,
-            7 => PathTrackingError::RootSearchFailed,
-            _ => panic!("Unknown PathTrackingStatus value: {}", flag),
-        }
+    Partition {
+        m,
+        p,
+        n_sets_per_partition,
+        n_indices_per_set,
+        indices,
+        is_initialized: false,
     }
 }
 
-pub type PathTrackingResult = Result<u32, PathTrackingError>;
+pub fn make_homogeneous_partition(n: usize) -> Partition {
+    make_m_homogeneous_partition(n, vec![(1..(n as u32) + 1).collect()])
+}
 
-// }}}
-
-// {{{ Solve
+// pub fn make_plp_homogeneous_partition() {}
 
 // }}}

@@ -159,11 +159,9 @@ contains
 
         ierr = 0
         if (allocated(PARTITION)) then
-            write (0, *) "Resetting partition"
-
             do i = 1, size(PARTITION)
                 if (associated(PARTITION(i)%SET)) then
-                    do j = 1, PARTITION(i)%SET(j)%NUM_INDICES
+                    do j = 1, PARTITION_SIZES(i)
                         if (associated(PARTITION(i)%SET(j)%INDEX)) then
                             deallocate (PARTITION(i)%SET(j)%INDEX, stat=ierr)
                             if (ierr .ne. 0) return
