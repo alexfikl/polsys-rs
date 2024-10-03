@@ -50,6 +50,8 @@ fn main() {
         );
     }
 
+    println!("{:?}", plp::PathTrackingResult::from(2));
+
     println!("ierr: {}", ierr);
 
     let mut part = plp::make_homogeneous_partition(3);

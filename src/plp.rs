@@ -125,6 +125,7 @@ impl fmt::Display for PolsysError {
     }
 }
 
+#[derive(Debug)]
 pub enum PathTrackingError {
     /// An unnknown flag returned by the routine.
     UnknownError = -1,
@@ -164,6 +165,8 @@ impl fmt::Display for PathTrackingError {
     }
 }
 
+#[derive(Debug)]
+#[allow(dead_code)]
 pub struct PathTrackingResult(Result<u32, PathTrackingError>);
 
 impl From<i32> for PathTrackingResult {
