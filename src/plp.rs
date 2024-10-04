@@ -45,6 +45,11 @@ pub enum PolsysError {
     InconsistentRecall = -6,
     /// Number of scale factors does not match number of equations.
     InsufficientScaleFactors = -7,
+
+    /// The indices given in a partition does not match the number of variables.
+    PartitionInvalidIndexCount = -8,
+    /// The indices given in a partition have incorrect values (not in 1 <= i <= n).
+    PartitionIncorrectIndex = -9,
 }
 
 impl From<i32> for PolsysError {
@@ -66,6 +71,8 @@ impl From<i32> for PolsysError {
             -5 => PolsysError::RepeatedPartition,
             -6 => PolsysError::InconsistentRecall,
             -7 => PolsysError::InsufficientScaleFactors,
+            -8 => PolsysError::PartitionInvalidIndexCount,
+            -9 => PolsysError::PartitionIncorrectIndex,
             _ => PolsysError::UnknownError,
         }
     }
@@ -76,6 +83,7 @@ impl PolsysError {
         match *self {
             PolsysError::NoError => "Finished successfully",
             PolsysError::UnknownError => "Unknown error ocured",
+            // allocation
             PolsysError::AllocateSystemFailed => {
                 "Error in system routine attempting to do allocation"
             }
@@ -94,6 +102,7 @@ impl PolsysError {
             PolsysError::DeallocateFailed => {
                 "Failed to allocate invalid object"
             }
+            // polsys_plp
             PolsysError::PolynomialInvalid => {
                 "Input polynomial and partitions dimensions or coefficient counts do not match"
             }
@@ -114,6 +123,13 @@ impl PolsysError {
             }
             PolsysError::InsufficientScaleFactors => {
                 "Less scale factors specified than system size"
+            }
+            // partition
+            PolsysError::PartitionInvalidIndexCount => {
+                "Partition index count does not match system size"
+            }
+            PolsysError::PartitionIncorrectIndex => {
+                "Partition contains incorrect indices (not in 1 <= i <= n)"
             }
         }
     }
@@ -332,10 +348,6 @@ impl<const N: usize> Polynomial<N> {
 // {{{ Partition
 
 pub struct Partition {
-    /// Number of sets per partition.
-    pub m: usize,
-    /// Number of indices per set.
-    pub p: usize,
     pub n_sets_per_partition: Vec<i32>,
     pub n_indices_per_set: Vec<i32>,
     pub indices: Vec<i32>,
@@ -368,9 +380,9 @@ impl Partition {
 
         unsafe {
             bindings::init_partition(
-                self.len() as i32,
-                self.m as i32,
-                self.p as i32,
+                self.n_sets_per_partition.len() as i32,
+                self.n_indices_per_set.len() as i32,
+                self.indices.len() as i32,
                 self.n_sets_per_partition.as_ptr(),
                 self.n_indices_per_set.as_ptr(),
                 self.indices.as_ptr(),
@@ -395,32 +407,66 @@ impl Partition {
     }
 }
 
-pub fn make_m_homogeneous_partition(n: usize, part: Vec<Vec<u32>>) -> Partition {
+pub fn make_m_homogeneous_partition(
+    n: usize,
+    part: Vec<Vec<u32>>,
+) -> Result<Partition, PolsysError> {
+    let flat_part: Vec<u32> = part.concat();
+    if flat_part.len() != n {
+        return Err(PolsysError::PartitionInvalidIndexCount);
+    }
+
+    if flat_part.iter().any(|&i| i < 1 || i > (n as u32)) {
+        return Err(PolsysError::PartitionIncorrectIndex);
+    }
+
     let m = part.len();
-    let p = 10;
     let n_sets_per_partition = iter::repeat(m as i32).take(n).collect();
     let n_indices_per_set_eq: Vec<i32> = part.iter().map(|x| x.len() as i32).collect();
     let n_indices_per_set = (0..n).flat_map(|_| n_indices_per_set_eq.clone()).collect();
     let indices = (0..n)
-        .flat_map(|_| part.iter().flatten())
+        .flat_map(|_| flat_part.iter())
         .map(|x| *x as i32)
         .collect();
 
-    Partition {
-        m,
-        p,
+    println!("n_sets_per_partition {:?}", n_sets_per_partition);
+    println!("n_indices_per_set {:?}", n_indices_per_set);
+    println!("indices {:?}", indices);
+
+    Ok(Partition {
         n_sets_per_partition,
         n_indices_per_set,
         indices,
         is_initialized: false,
-    }
+    })
 }
 
-pub fn make_homogeneous_partition(n: usize) -> Partition {
+pub fn make_homogeneous_partition(n: usize) -> Result<Partition, PolsysError> {
     make_m_homogeneous_partition(n, vec![(1..(n as u32) + 1).collect()])
 }
 
-// pub fn make_plp_homogeneous_partition() {}
+pub fn make_plp_homogeneous_partition(
+    n: usize,
+    part: Vec<Vec<Vec<u32>>>,
+) -> Result<Partition, PolsysError> {
+    if part.len() != n {
+        return Err(PolsysError::PartitionInvalidIndexCount);
+    }
+
+    let n_sets_per_partition = part.iter().map(|p| p.len() as i32).collect();
+    let n_indices_per_set = part
+        .iter()
+        .flat_map(|p| p.iter().map(|pp| pp.len() as i32))
+        .collect();
+    let indices = part.concat().concat().iter().map(|x| *x as i32).collect();
+
+    Ok(Partition {
+        n_sets_per_partition,
+        n_indices_per_set,
+        indices,
+        is_initialized: false,
+    })
+}
 
 // }}}
 
@@ -578,7 +624,8 @@ mod tests {
 
     #[test]
     fn test_partition_m_homogeneous() {
-        let mut part = make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]);
+        let mut part =
+            make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]).unwrap();
 
         let _ = deallocate_partition();
         assert!(!is_partition_allocated());
@@ -587,6 +634,31 @@ mod tests {
         assert!(is_partition_allocated());
 
         assert_eq!(part.n_sets_per_partition, [2, 2, 2]);
+        assert_eq!(part.n_indices_per_set, [2, 1, 2, 1, 2, 1]);
+        assert_eq!(part.indices, [1, 2, 3, 1, 2, 3, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_partition_plp_homogeneous() {
+        let mut part = make_plp_homogeneous_partition(
+            3,
+            vec![
+                vec![vec![1, 2], vec![3]],
+                vec![vec![1], vec![2, 3]],
+                vec![vec![1], vec![2], vec![3]],
+            ],
+        )
+        .unwrap();
+
+        let _ = deallocate_partition();
+        assert!(!is_partition_allocated());
+
+        part.init().unwrap();
+        assert!(is_partition_allocated());
+
+        assert_eq!(part.n_sets_per_partition, [2, 2, 3]);
+        assert_eq!(part.n_indices_per_set, [2, 1, 1, 2, 1, 1, 1]);
+        assert_eq!(part.indices, [1, 2, 3, 1, 2, 3, 1, 2, 3]);
     }
 }
 

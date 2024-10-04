@@ -121,7 +121,7 @@ contains
         if (ierr .ne. 0) then
             ! NOTE: bumping the error codes so we distinguish deallocation form
             ! allocation errors in the calling code
-            ierr = ierr + 10
+            ierr = ierr + 4
             return
         end if
 
@@ -211,8 +211,8 @@ contains
     !> @brief Initialize the global partition.
     !!
     !! @param[in] n         number of equations and variables
-    !! @param[in] m         max number of sets per partition
-    !! @param[in] p         max number of indices per set
+    !! @param[in] m         number of sets per equation
+    !! @param[in] p         number of indices per equation
     subroutine init_partition(n, m, p, n_sets_per_partition, n_indices_per_set, &
                               indices, ierr) bind(c)
         ! routine arguments
@@ -220,18 +220,18 @@ contains
         integer(c_int), intent(in), value :: m
         integer(c_int), intent(in), value :: p
         integer(c_int), dimension(n), intent(in) :: n_sets_per_partition
-        integer(c_int), dimension(n*m), intent(in) :: n_indices_per_set
-        integer(c_int), dimension(n*m*p), intent(in) :: indices
+        integer(c_int), dimension(m), intent(in) :: n_indices_per_set
+        integer(c_int), dimension(p), intent(in) :: indices
         integer(c_int), intent(out) :: ierr
 
         ! local variables
-        integer :: i, j, k, n_i, n_j
+        integer :: i, j, g_i, g_j, n_i, n_j
 
         call deallocate_partition(ierr)
         if (ierr .ne. 0) then
             ! NOTE: bumping the error codes so we distinguish deallocation form
             ! allocation errors in the calling code
-            ierr = ierr + 10
+            ierr = ierr + 4
             return
         end if
 
@@ -241,28 +241,34 @@ contains
         allocate (PARTITION(n), stat=ierr)
         if (ierr .ne. 0) return
 
-        k = 1
+        ! global indices into n_indices_per_set and indices
+        g_i = 1
+        g_j = 1
+
         PARTITION_SIZES(1:n) = n_sets_per_partition(1:n)
         do i = 1, n             ! for each partition
             n_i = n_sets_per_partition(i)
+
             allocate (PARTITION(i)%SET(n_i), stat=ierr)
             if (ierr .ne. 0) return
 
             do j = 1, n_i       ! for each set in the partition
-                n_j = n_indices_per_set(m * (i - 1) + j)
+                n_j = n_indices_per_set(g_i + j - 1)
 
                 allocate (PARTITION(i)%SET(j)%INDEX(n_j), stat=ierr)
                 if (ierr .ne. 0) return
 
                 PARTITION(i)%SET(j)%NUM_INDICES = n_j
-                PARTITION(i)%SET(j)%INDEX(1:n_j) = indices(k:k + n_j)
+                PARTITION(i)%SET(j)%INDEX(1:n_j) = indices(g_j:g_j + n_j - 1)
 
                 ! NOTE: these are filled in by POLSYS_PLP during the solve
                 ! PARTITION(i)%SET(j)%SET_DEG = 0
                 ! PARTITION(i)%SET(j)%START_COEF = 0
 
-                k = k + n_j
+                g_j = g_j + n_j
             end do
+
+            g_i = g_i + n_i
         end do
 
         ierr = 0
