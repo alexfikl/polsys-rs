@@ -69,6 +69,10 @@ release:		## Build project in release mode
 	cargo build --locked --all-features --release
 .PHONY: release
 
+test:			## Run tests
+	cargo test
+.PHONY: test
+
 # }}}
 
 clean:			## Remove temporary files

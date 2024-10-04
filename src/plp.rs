@@ -8,9 +8,9 @@ use std::iter;
 
 use crate::bindings;
 
-/// {{{ Errors
+// {{{ Errors
 
-#[derive(Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum PolsysError {
     /// Error flag returned from the Fortran library when there is no error. This
     /// should never be returned by the Rust wrappers in this library.
@@ -55,9 +55,9 @@ impl From<i32> for PolsysError {
             1 => PolsysError::AllocateSystemFailed,
             2 => PolsysError::AllocateInvalidObject,
             3 => PolsysError::AllocateFailed,
-            11 => PolsysError::DeallocateSystemFailed,
-            12 => PolsysError::DeallocateInvalidObject,
-            13 => PolsysError::DeallocateFailed,
+            4 => PolsysError::DeallocateSystemFailed,
+            5 => PolsysError::DeallocateInvalidObject,
+            6 => PolsysError::DeallocateFailed,
             // solver errors (returned by `polsys_plp`)
             -1 => PolsysError::PolynomialInvalid,
             -2 => PolsysError::NegativePower,
@@ -125,7 +125,7 @@ impl fmt::Display for PolsysError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum PathTrackingError {
     /// An unnknown flag returned by the routine.
     UnknownError = -1,
@@ -179,7 +179,7 @@ impl From<i32> for PathTrackingResult {
             6 => Err(PathTrackingError::NewtonConvergenceFailed),
             7 => Err(PathTrackingError::RootSearchFailed),
             n => {
-                if n > 10 {
+                if n > 10 && (n - 1) % 10 == 0 {
                     Ok(((n - 1) / 10) as u32)
                 } else {
                     Err(PathTrackingError::UnknownError)
@@ -215,6 +215,21 @@ pub struct Polynomial<const N: usize> {
     is_initialized: bool,
 }
 
+pub fn is_polynomial_allocated() -> bool {
+    let mut flag: i32 = 0;
+
+    unsafe { bindings::is_polynomial_allocated(&mut flag) }
+
+    flag != 0
+}
+
+pub fn deallocate_polynomial() -> i32 {
+    let mut ierr: i32 = 0;
+    unsafe { bindings::deallocate_polynomial(&mut ierr) };
+
+    ierr
+}
+
 impl<const N: usize> Polynomial<N> {
     pub fn new(system: Vec<HashMap<[i32; N], Complex64>>) -> Self {
         let n_coeffs_per_eq: Vec<i32> = system.iter().map(|c| c.len() as i32).collect();
@@ -237,6 +252,18 @@ impl<const N: usize> Polynomial<N> {
             coefficients,
             degrees,
             is_initialized: false,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn deallocate(&mut self) -> Result<&mut Self, PolsysError> {
+        let ierr = deallocate_polynomial();
+
+        if ierr == 0 {
+            self.is_initialized = false;
+            Ok(self)
+        } else {
+            Err(PolsysError::from(ierr))
         }
     }
 
@@ -294,6 +321,10 @@ impl<const N: usize> Polynomial<N> {
     pub fn len(&self) -> usize {
         self.system.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.system.is_empty()
+    }
 }
 
 // }}}
@@ -310,6 +341,21 @@ pub struct Partition {
     pub indices: Vec<i32>,
 
     pub is_initialized: bool,
+}
+
+pub fn is_partition_allocated() -> bool {
+    let mut flag: i32 = 0;
+
+    unsafe { bindings::is_partition_allocated(&mut flag) }
+
+    flag != 0
+}
+
+pub fn deallocate_partition() -> i32 {
+    let mut ierr: i32 = 0;
+    unsafe { bindings::deallocate_partition(&mut ierr) };
+
+    ierr
 }
 
 impl Partition {
@@ -343,6 +389,10 @@ impl Partition {
     pub fn len(&self) -> usize {
         self.n_sets_per_partition.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.n_sets_per_partition.is_empty()
+    }
 }
 
 pub fn make_m_homogeneous_partition(n: usize, part: Vec<Vec<u32>>) -> Partition {
@@ -371,5 +421,173 @@ pub fn make_homogeneous_partition(n: usize) -> Partition {
 }
 
 // pub fn make_plp_homogeneous_partition() {}
+
+// }}}
+
+// {{{ Tests
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use num::complex::c64;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_polysys_error_from_i32() {
+        let err = PolsysError::from(0);
+        assert_eq!(err, PolsysError::NoError);
+
+        let err = PolsysError::from(-7);
+        assert_eq!(err, PolsysError::InsufficientScaleFactors);
+
+        let err = PolsysError::from(999);
+        assert_eq!(err, PolsysError::UnknownError);
+    }
+
+    #[test]
+    fn test_polsys_error_display() {
+        let err = PolsysError::NoError;
+        assert_eq!(err.as_str(), "Finished successfully");
+        assert_eq!(format!("{err}"), "Finished successfully");
+    }
+
+    #[test]
+    fn test_path_tracking_result_from_i32() {
+        let result = PathTrackingResult::from(2);
+        match result.0 {
+            Ok(_) => unreachable!(),
+            Err(e) => assert_eq!(e, PathTrackingError::TrackingToleranceFailed),
+        }
+
+        let result = PathTrackingResult::from(1 + 10 * 2);
+        match result.0 {
+            Ok(n) => assert_eq!(n, 2),
+            Err(_) => unreachable!(),
+        }
+
+        let result = PathTrackingResult::from(2 + 10 * 2);
+        match result.0 {
+            Ok(_) => unreachable!(),
+            Err(e) => assert_eq!(e, PathTrackingError::UnknownError),
+        }
+    }
+
+    #[test]
+    fn test_polynomial_init() {
+        let mut ierr: i32 = 0;
+        let n = 2;
+        let n_coeffs_per_eq = [3, 3];
+        let coefficients = [
+            c64(3.0, 1.3),
+            c64(1.0, 0.1),
+            c64(-1.0, 0.2),
+            c64(2.0, 0.5),
+            c64(1.0, 0.5),
+            c64(-3.0, 1.0),
+        ];
+        let degrees = [[2, 0], [0, 2], [0, 0], [1, 1], [0, 2], [0, 0]].as_flattened();
+
+        // NOTE: ensure the polynomial is deallocated
+        let _ = deallocate_polynomial();
+        assert!(!is_polynomial_allocated());
+
+        unsafe {
+            bindings::init_polynomial(
+                n,
+                coefficients.len() as i32,
+                n_coeffs_per_eq.as_ptr(),
+                coefficients.as_ptr(),
+                degrees.as_ptr(),
+                &mut ierr,
+            );
+        }
+
+        assert!(is_polynomial_allocated());
+    }
+
+    #[test]
+    fn test_polynomial_wrapper() {
+        let mut poly = Polynomial::new(vec![
+            HashMap::from([
+                ([2, 0], c64(3.0, 1.3)),
+                ([0, 2], c64(1.0, 0.1)),
+                ([0, 0], c64(-1.0, 0.2)),
+            ]),
+            HashMap::from([
+                ([1, 1], c64(2.0, 0.5)),
+                ([0, 2], c64(1.0, 0.5)),
+                ([0, 0], c64(-3.0, 1.0)),
+            ]),
+        ]);
+
+        // NOTE: ensure the polynomial is deallocated
+        let _ = deallocate_polynomial();
+        assert!(!is_polynomial_allocated());
+
+        poly.init().unwrap();
+        assert!(is_polynomial_allocated());
+
+        assert_eq!(poly.len(), 2);
+        assert_eq!(poly.degrees(), [2, 2]);
+        assert_eq!(poly.total_degree(), 4);
+    }
+
+    #[test]
+    fn test_partition_init() {
+        let mut ierr: i32 = 0;
+
+        let n_sets_per_partition = [2, 2, 2, 2, 2, 2, 2, 2];
+        let n_indices_per_set = [
+            [4, 4],
+            [4, 4],
+            [4, 4],
+            [4, 4],
+            [4, 4],
+            [4, 4],
+            [4, 4],
+            [4, 4],
+        ]
+        .as_flattened();
+        let indices = [
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+            [[1, 2, 5, 6], [3, 4, 7, 8]],
+        ]
+        .as_flattened()
+        .as_flattened();
+
+        unsafe {
+            bindings::init_partition(
+                n_sets_per_partition.len() as i32,
+                2,
+                4,
+                n_sets_per_partition.as_ptr(),
+                n_indices_per_set.as_ptr(),
+                indices.as_ptr(),
+                &mut ierr,
+            );
+        }
+
+        assert_eq!(ierr, 0);
+    }
+
+    #[test]
+    fn test_partition_m_homogeneous() {
+        let mut part = make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]);
+
+        let _ = deallocate_partition();
+        assert!(!is_partition_allocated());
+
+        part.init().unwrap();
+        assert!(is_partition_allocated());
+
+        assert_eq!(part.n_sets_per_partition, [2, 2, 2]);
+    }
+}
 
 // }}}

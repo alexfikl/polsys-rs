@@ -15,6 +15,10 @@ extern "C" {
         ierr: *mut c_int,
     );
 
+    pub fn is_polynomial_allocated(flag: *mut c_int);
+
+    pub fn deallocate_polynomial(ierr: *mut c_int);
+
     pub fn init_partition(
         n: c_int,
         m: c_int,
@@ -24,6 +28,10 @@ extern "C" {
         indices: *const c_int,
         ierr: *mut c_int,
     );
+
+    pub fn is_partition_allocated(flag: *mut c_int);
+
+    pub fn deallocate_partition(ierr: *mut c_int);
 
     // pub fn bezout_plp_wrapper(
     //     n: c_int,

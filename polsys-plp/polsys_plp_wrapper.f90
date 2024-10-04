@@ -21,10 +21,20 @@ contains
 
     ! {{{ Polynomial
 
-    !> @brief Reset the global polynomial value.
+    subroutine is_polynomial_allocated(flag) bind(c)
+        integer(c_int), intent(out) :: flag
+
+        if (allocated(POLYNOMIAL)) then
+            flag = 1
+        else
+            flag = 0
+        end if
+    end subroutine
+
+    !> @brief Deallocates the global polynomial value.
     !!
     !! This is automatically called by `init_polynomial`.
-    subroutine reset_polynomial(ierr) bind(c)
+    subroutine deallocate_polynomial(ierr) bind(c)
         ! routine arguments
         integer(c_int), intent(out) :: ierr
 
@@ -33,8 +43,6 @@ contains
 
         ierr = 0
         if (allocated(POLYNOMIAL)) then
-            write (*, *) 'Resetting polynomial'
-
             do i = 1, size(POLYNOMIAL)
                 if (ASSOCIATED(POLYNOMIAL(i)%TERM)) then
                     do j = 1, POLYNOMIAL(i)%NUM_TERMS
@@ -104,14 +112,12 @@ contains
         ! local variables
         integer :: i, j, k, n_i
 
-        write (*, *) "Initializing polynomial"
-
         if (m .ne. sum(n_coeffs_per_eq)) then
             ierr = 20
             return
         end if
 
-        call reset_polynomial(ierr)
+        call deallocate_polynomial(ierr)
         if (ierr .ne. 0) then
             ! NOTE: bumping the error codes so we distinguish deallocation form
             ! allocation errors in the calling code
@@ -135,7 +141,6 @@ contains
 
                 POLYNOMIAL(i)%TERM(j)%COEF = coefficients(k)
                 POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees(n * (k - 1) + 1:n * k)
-                write (0, *) degrees(n * (k - 1) + 1:n * k)
                 k = k + 1
             end do
         end do
@@ -147,10 +152,22 @@ contains
 
     ! {{{ Partition
 
-    !> @brief Reset the global partition.
+    subroutine is_partition_allocated(flag) bind(c)
+        ! routine arguments
+        integer(c_int), intent(out) :: flag
+
+        if (allocated(PARTITION) .and. allocated(PARTITION_SIZES)) then
+            flag = 1
+        else
+            flag = 0
+        end if
+
+    end subroutine
+
+    !> @brief Deallocate the global partition.
     !!
     !! This is automatically called by `init_partition`.
-    subroutine reset_partition(ierr) bind(c)
+    subroutine deallocate_partition(ierr) bind(c)
         ! routine arguments
         integer(c_int), intent(out) :: ierr
 
@@ -210,9 +227,7 @@ contains
         ! local variables
         integer :: i, j, k, n_i, n_j
 
-        write (0, *) "Initializing partition"
-
-        call reset_partition(ierr)
+        call deallocate_partition(ierr)
         if (ierr .ne. 0) then
             ! NOTE: bumping the error codes so we distinguish deallocation form
             ! allocation errors in the calling code
@@ -233,19 +248,14 @@ contains
             allocate (PARTITION(i)%SET(n_i), stat=ierr)
             if (ierr .ne. 0) return
 
-            write (*, *) n_i
-
             do j = 1, n_i       ! for each set in the partition
                 n_j = n_indices_per_set(m * (i - 1) + j)
-                write (*, *) n_j
 
                 allocate (PARTITION(i)%SET(j)%INDEX(n_j), stat=ierr)
                 if (ierr .ne. 0) return
 
                 PARTITION(i)%SET(j)%NUM_INDICES = n_j
                 PARTITION(i)%SET(j)%INDEX(1:n_j) = indices(k:k + n_j)
-
-                write (*, *) PARTITION(i)%SET(j)%INDEX
 
                 ! NOTE: these are filled in by POLSYS_PLP during the solve
                 ! PARTITION(i)%SET(j)%SET_DEG = 0
