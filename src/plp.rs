@@ -470,6 +470,40 @@ pub fn make_plp_homogeneous_partition(
 
 // }}}
 
+// {{{ Bezout
+
+pub fn bezout<const N: usize>(
+    poly: &mut Polynomial<N>,
+    part: &mut Partition,
+    tol: f64,
+) -> Result<i32, PolsysError> {
+    let _ = deallocate_polynomial();
+    poly.init()?;
+    let _ = deallocate_partition();
+    part.init()?;
+
+    let mut bplp: i32 = 0;
+    let mut ierr: i32 = 0;
+
+    unsafe {
+        bindings::bezout_plp_wrapper(
+            poly.len() as i32,
+            *poly.n_coeffs_per_eq.iter().max().unwrap(),
+            tol,
+            &mut bplp,
+            &mut ierr,
+        )
+    }
+
+    if ierr == 0 {
+        Ok(bplp)
+    } else {
+        Err(PolsysError::from(ierr))
+    }
+}
+
+// }}}
+
 // {{{ Tests
 
 #[cfg(test)]
@@ -659,6 +693,25 @@ mod tests {
         assert_eq!(part.n_sets_per_partition, [2, 2, 3]);
         assert_eq!(part.n_indices_per_set, [2, 1, 1, 2, 1, 1, 1]);
         assert_eq!(part.indices, [1, 2, 3, 1, 2, 3, 1, 2, 3]);
+    }
+
+    #[test]
+    fn test_bezout_plp() {
+        let mut poly = Polynomial::new(vec![
+            HashMap::from([
+                ([2, 0], c64(3.0, 1.3)),
+                ([0, 2], c64(1.0, 0.1)),
+                ([0, 0], c64(-1.0, 0.2)),
+            ]),
+            HashMap::from([
+                ([1, 1], c64(2.0, 0.5)),
+                ([0, 2], c64(1.0, 0.5)),
+                ([0, 0], c64(-3.0, 1.0)),
+            ]),
+        ]);
+        let mut part = make_homogeneous_partition(2).unwrap();
+
+        let bplp = bezout(&mut poly, &mut part, 1.0e-8);
     }
 }
 

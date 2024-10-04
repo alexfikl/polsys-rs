@@ -3,7 +3,7 @@
 
 use num::complex::Complex64;
 
-use std::ffi::c_int;
+use std::ffi::{c_double, c_int};
 
 extern "C" {
     pub fn init_polynomial(
@@ -33,13 +33,13 @@ extern "C" {
 
     pub fn deallocate_partition(ierr: *mut c_int);
 
-    // pub fn bezout_plp_wrapper(
-    //     n: c_int,
-    //     maxt: c_int,
-    //     tol: c_double,
-    //     bplp: *mut c_int,
-    //     ierr: *mut c_int,
-    // );
+    pub fn bezout_plp_wrapper(
+        n: c_int,
+        maxt: c_int,
+        tol: c_double,
+        bplp: *mut c_int,
+        ierr: *mut c_int,
+    );
 
     // pub fn polsys_plp_(
     //     n: *const c_int,
