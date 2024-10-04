@@ -44,14 +44,14 @@ jobs:
     - run: |
         make clippy
 
-  build:
+  test:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
-    name: Build (rust)
+    name: Testing (${ runner.os })
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - uses: Swatinem/rust-cache@v2
     - run: |
-        make release
+        make test
 
 # vim: set ts=2 sw=2 et:
