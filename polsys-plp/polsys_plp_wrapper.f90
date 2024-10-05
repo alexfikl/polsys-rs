@@ -253,7 +253,7 @@ contains
 
                 ! NOTE: these are filled in by POLSYS_PLP during the solve
                 PARTITION(i)%SET(j)%SET_DEG = 0
-                nullify(PARTITION(i)%SET(j)%START_COEF)
+                nullify (PARTITION(i)%SET(j)%START_COEF)
 
                 g_j = g_j + n_j
             end do
