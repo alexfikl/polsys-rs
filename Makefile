@@ -70,7 +70,7 @@ release:		## Build project in release mode
 .PHONY: release
 
 test:			## Run tests
-	cargo test
+	cargo test --all-features -- --test-threads 1
 .PHONY: test
 
 # }}}

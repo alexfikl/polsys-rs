@@ -30,6 +30,12 @@ pub enum PolsysError {
     DeallocateInvalidObject = 5,
     /// Both system and object errors in deallocation.
     DeallocateFailed = 6,
+    /// Invalid tolerance given (e.g. < 0).
+    InvalidTolerance = 7,
+    /// Polynomial is not allocated on calls.
+    PolynomialNotAllocated = 8,
+    /// Partition was not allocated
+    PartitionNotAllocated = 9,
 
     /// Dimensions or setup of input polynomial and partition do not match.
     PolynomialInvalid = -1,
@@ -63,6 +69,9 @@ impl From<i32> for PolsysError {
             4 => PolsysError::DeallocateSystemFailed,
             5 => PolsysError::DeallocateInvalidObject,
             6 => PolsysError::DeallocateFailed,
+            7 => PolsysError::InvalidTolerance,
+            8 => PolsysError::PolynomialNotAllocated,
+            9 => PolsysError::PartitionNotAllocated,
             // solver errors (returned by `polsys_plp`)
             -1 => PolsysError::PolynomialInvalid,
             -2 => PolsysError::NegativePower,
@@ -101,6 +110,13 @@ impl PolsysError {
             }
             PolsysError::DeallocateFailed => {
                 "Failed to allocate invalid object"
+            }
+            PolsysError::InvalidTolerance => { "Invalid tolerance given (e.g. < 0)" }
+            PolsysError::PolynomialNotAllocated => {
+                "Polynomial has not been initialized (call Polynomial::init)"
+            }
+            PolsysError::PartitionNotAllocated => {
+                "Partition has not been initialized (call Partition::init)"
             }
             // polsys_plp
             PolsysError::PolynomialInvalid => {
@@ -271,7 +287,6 @@ impl<const N: usize> Polynomial<N> {
         }
     }
 
-    #[allow(dead_code)]
     fn deallocate(&mut self) -> Result<&mut Self, PolsysError> {
         let ierr = deallocate_polynomial();
 
@@ -285,7 +300,7 @@ impl<const N: usize> Polynomial<N> {
 
     pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
         if self.is_initialized {
-            return Ok(self);
+            self.deallocate()?;
         }
 
         let mut ierr: i32 = 0;
@@ -373,7 +388,7 @@ pub fn deallocate_partition() -> i32 {
 impl Partition {
     pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
         if self.is_initialized {
-            return Ok(self);
+            self.deallocate()?;
         }
 
         let mut ierr: i32 = 0;
@@ -392,6 +407,17 @@ impl Partition {
 
         if ierr == 0 {
             self.is_initialized = true;
+            Ok(self)
+        } else {
+            Err(PolsysError::from(ierr))
+        }
+    }
+
+    fn deallocate(&mut self) -> Result<&mut Self, PolsysError> {
+        let ierr = deallocate_partition();
+
+        if ierr == 0 {
+            self.is_initialized = false;
             Ok(self)
         } else {
             Err(PolsysError::from(ierr))
@@ -428,10 +454,6 @@ pub fn make_m_homogeneous_partition(
         .flat_map(|_| flat_part.iter())
         .map(|x| *x as i32)
         .collect();
-
-    println!("n_sets_per_partition {:?}", n_sets_per_partition);
-    println!("n_indices_per_set {:?}", n_indices_per_set);
-    println!("indices {:?}", indices);
 
     Ok(Partition {
         n_sets_per_partition,
@@ -477,10 +499,13 @@ pub fn bezout<const N: usize>(
     part: &mut Partition,
     tol: f64,
 ) -> Result<i32, PolsysError> {
-    let _ = deallocate_polynomial();
+    println!("Initializing polynomial: {}", is_polynomial_allocated());
     poly.init()?;
-    let _ = deallocate_partition();
+    println!("Initialized polynomial: {}", is_polynomial_allocated());
+
+    println!("Initializing partition: {}", is_partition_allocated());
     part.init()?;
+    println!("Initialized partition: {}", is_partition_allocated());
 
     let mut bplp: i32 = 0;
     let mut ierr: i32 = 0;
@@ -494,6 +519,7 @@ pub fn bezout<const N: usize>(
             &mut ierr,
         )
     }
+    println!("ierr: {}", ierr);
 
     if ierr == 0 {
         Ok(bplp)
@@ -583,6 +609,7 @@ mod tests {
         }
 
         assert!(is_polynomial_allocated());
+        let _ = deallocate_polynomial();
     }
 
     #[test]
@@ -600,16 +627,14 @@ mod tests {
             ]),
         ]);
 
-        // NOTE: ensure the polynomial is deallocated
-        let _ = deallocate_polynomial();
-        assert!(!is_polynomial_allocated());
-
         poly.init().unwrap();
         assert!(is_polynomial_allocated());
 
         assert_eq!(poly.len(), 2);
         assert_eq!(poly.degrees(), [2, 2]);
         assert_eq!(poly.total_degree(), 4);
+
+        poly.deallocate().unwrap();
     }
 
     #[test]
@@ -654,6 +679,7 @@ mod tests {
         }
 
         assert_eq!(ierr, 0);
+        let _ = deallocate_partition();
     }
 
     #[test]
@@ -661,15 +687,14 @@ mod tests {
         let mut part =
             make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]).unwrap();
 
-        let _ = deallocate_partition();
-        assert!(!is_partition_allocated());
-
         part.init().unwrap();
         assert!(is_partition_allocated());
 
         assert_eq!(part.n_sets_per_partition, [2, 2, 2]);
         assert_eq!(part.n_indices_per_set, [2, 1, 2, 1, 2, 1]);
         assert_eq!(part.indices, [1, 2, 3, 1, 2, 3, 1, 2, 3]);
+
+        part.deallocate().unwrap();
     }
 
     #[test]
@@ -684,15 +709,14 @@ mod tests {
         )
         .unwrap();
 
-        let _ = deallocate_partition();
-        assert!(!is_partition_allocated());
-
         part.init().unwrap();
         assert!(is_partition_allocated());
 
         assert_eq!(part.n_sets_per_partition, [2, 2, 3]);
         assert_eq!(part.n_indices_per_set, [2, 1, 1, 2, 1, 1, 1]);
         assert_eq!(part.indices, [1, 2, 3, 1, 2, 3, 1, 2, 3]);
+
+        part.deallocate().unwrap();
     }
 
     #[test]
@@ -711,7 +735,14 @@ mod tests {
         ]);
         let mut part = make_homogeneous_partition(2).unwrap();
 
-        let bplp = bezout(&mut poly, &mut part, 1.0e-8);
+        let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
+        println!("BPLP: {}", bplp);
+        let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
+        println!("BPLP: {}", bplp);
+        assert_eq!(bplp, 4);
+
+        poly.deallocate().unwrap();
+        part.deallocate().unwrap();
     }
 }
 

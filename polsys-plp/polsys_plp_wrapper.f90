@@ -2,20 +2,10 @@
 ! SPDX-License-Identifier: MIT
 
 module polsys_plp_wrapper
-    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES
+    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES, BEZOUT_PLP
     use, intrinsic :: iso_c_binding, only: c_int, c_double_complex, c_double
 
     implicit none
-
-    interface
-        subroutine BEZOUT_PLP(N, MAXT, TOL, BPLP)
-            use REAL_PRECISION, ONLY: R8
-
-            INTEGER, INTENT(IN):: N, MAXT
-            REAL(KIND=R8), INTENT(IN OUT):: TOL
-            INTEGER, INTENT(OUT):: BPLP
-        end subroutine
-    end interface
 
 contains
 
@@ -262,8 +252,8 @@ contains
                 PARTITION(i)%SET(j)%INDEX(1:n_j) = indices(g_j:g_j + n_j - 1)
 
                 ! NOTE: these are filled in by POLSYS_PLP during the solve
-                ! PARTITION(i)%SET(j)%SET_DEG = 0
-                ! PARTITION(i)%SET(j)%START_COEF = 0
+                PARTITION(i)%SET(j)%SET_DEG = 0
+                nullify(PARTITION(i)%SET(j)%START_COEF)
 
                 g_j = g_j + n_j
             end do
@@ -293,17 +283,17 @@ contains
         bplp = 0
 
         if (tol .le. 0.0_c_double) then
-            ierr = 1
+            ierr = 7
             return
         end if
 
         if (.not. allocated(POLYNOMIAL)) then
-            ierr = 2
+            ierr = 8
             return
         end if
 
         if (.not. allocated(PARTITION_SIZES) .or. .not. allocated(PARTITION)) then
-            ierr = 3
+            ierr = 9
             return
         end if
 
