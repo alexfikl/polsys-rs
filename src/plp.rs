@@ -62,6 +62,10 @@ pub enum PolsysError {
     InvalidTolerance = 106,
     /// Invalid Bezout number (negative).
     InvalidBezoutNumber = 107,
+    /// Polynomial is already initialized.
+    PolynomialDoubleInitialize = 108,
+    /// Partition is already initialized.
+    PartitionDoubleInitialize = 109,
 }
 
 impl From<i32> for PolsysError {
@@ -91,6 +95,9 @@ impl From<i32> for PolsysError {
             104 => PolsysError::PartitionIncorrectIndex,
             105 => PolsysError::PolynomialInvalidCoefficientCount,
             106 => PolsysError::InvalidTolerance,
+            107 => PolsysError::InvalidBezoutNumber,
+            108 => PolsysError::PolynomialDoubleInitialize,
+            109 => PolsysError::PartitionDoubleInitialize,
             _ => PolsysError::UnknownError,
         }
     }
@@ -162,6 +169,12 @@ impl PolsysError {
             }
             PolsysError::InvalidBezoutNumber => {
                 "Bezout number if negative or otherwise invalid"
+            }
+            PolsysError::PolynomialDoubleInitialize => {
+                "Polynomial has already been initialized (cannot call init again)"
+            }
+            PolsysError::PartitionDoubleInitialize => {
+                "Partition has already been initialized (cannot call init again)"
             }
         }
     }
@@ -258,12 +271,9 @@ pub struct Polynomial<const N: usize> {
     /// A flat list of degrees for the whole system, i.e. the first
     /// `n * n_coeffs_per_eq[0]` degrees belong to the first equation.
     degrees: Vec<i32>,
-
-    /// A flag to denote that the polynomial was correctly initialized.
-    is_initialized: bool,
 }
 
-pub fn is_polynomial_allocated() -> bool {
+fn is_polynomial_allocated() -> bool {
     let mut flag: i32 = 0;
 
     unsafe { bindings::is_polynomial_allocated(&mut flag) }
@@ -271,7 +281,7 @@ pub fn is_polynomial_allocated() -> bool {
     flag != 0
 }
 
-pub fn deallocate_polynomial() -> i32 {
+fn deallocate_polynomial() -> i32 {
     let mut ierr: i32 = 0;
     unsafe { bindings::deallocate_polynomial(&mut ierr) };
 
@@ -299,7 +309,6 @@ impl<const N: usize> Polynomial<N> {
             n_coeffs_per_eq,
             coefficients,
             degrees,
-            is_initialized: false,
         }
     }
 
@@ -307,7 +316,6 @@ impl<const N: usize> Polynomial<N> {
         let ierr = deallocate_polynomial();
 
         if ierr == 0 {
-            self.is_initialized = false;
             Ok(self)
         } else {
             Err(PolsysError::from(ierr))
@@ -315,8 +323,8 @@ impl<const N: usize> Polynomial<N> {
     }
 
     pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
-        if self.is_initialized {
-            self.deallocate()?;
+        if is_polynomial_allocated() {
+            return Err(PolsysError::PolynomialDoubleInitialize);
         }
 
         let mut ierr: i32 = 0;
@@ -333,7 +341,6 @@ impl<const N: usize> Polynomial<N> {
         }
 
         if ierr == 0 {
-            self.is_initialized = true;
             Ok(self)
         } else {
             Err(PolsysError::from(ierr))
@@ -374,6 +381,12 @@ impl<const N: usize> Polynomial<N> {
     }
 }
 
+impl<const N: usize> Drop for Polynomial<N> {
+    fn drop(&mut self) {
+        self.deallocate().unwrap();
+    }
+}
+
 // }}}
 
 // {{{ Partition
@@ -382,11 +395,9 @@ pub struct Partition {
     pub n_sets_per_partition: Vec<i32>,
     pub n_indices_per_set: Vec<i32>,
     pub indices: Vec<i32>,
-
-    pub is_initialized: bool,
 }
 
-pub fn is_partition_allocated() -> bool {
+fn is_partition_allocated() -> bool {
     let mut flag: i32 = 0;
 
     unsafe { bindings::is_partition_allocated(&mut flag) }
@@ -394,7 +405,7 @@ pub fn is_partition_allocated() -> bool {
     flag != 0
 }
 
-pub fn deallocate_partition() -> i32 {
+fn deallocate_partition() -> i32 {
     let mut ierr: i32 = 0;
     unsafe { bindings::deallocate_partition(&mut ierr) };
 
@@ -403,8 +414,8 @@ pub fn deallocate_partition() -> i32 {
 
 impl Partition {
     pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
-        if self.is_initialized {
-            self.deallocate()?;
+        if is_partition_allocated() {
+            return Err(PolsysError::PartitionDoubleInitialize);
         }
 
         let mut ierr: i32 = 0;
@@ -422,7 +433,6 @@ impl Partition {
         }
 
         if ierr == 0 {
-            self.is_initialized = true;
             Ok(self)
         } else {
             Err(PolsysError::from(ierr))
@@ -433,7 +443,6 @@ impl Partition {
         let ierr = deallocate_partition();
 
         if ierr == 0 {
-            self.is_initialized = false;
             Ok(self)
         } else {
             Err(PolsysError::from(ierr))
@@ -475,8 +484,13 @@ pub fn make_m_homogeneous_partition(
         n_sets_per_partition,
         n_indices_per_set,
         indices,
-        is_initialized: false,
     })
+}
+
+impl Drop for Partition {
+    fn drop(&mut self) {
+        self.deallocate().unwrap();
+    }
 }
 
 pub fn make_homogeneous_partition(n: usize) -> Result<Partition, PolsysError> {
@@ -502,7 +516,6 @@ pub fn make_plp_homogeneous_partition(
         n_sets_per_partition,
         n_indices_per_set,
         indices,
-        is_initialized: false,
     })
 }
 
@@ -831,6 +844,9 @@ mod tests {
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
         println!("BPLP: {}", bplp);
         assert_eq!(bplp, 4);
+
+        poly.deallocate().unwrap();
+        part.deallocate().unwrap();
 
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
         println!("BPLP: {}", bplp);
