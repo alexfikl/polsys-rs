@@ -30,12 +30,6 @@ pub enum PolsysError {
     DeallocateInvalidObject = 5,
     /// Both system and object errors in deallocation.
     DeallocateFailed = 6,
-    /// Invalid tolerance given (e.g. < 0).
-    InvalidTolerance = 7,
-    /// Polynomial is not allocated on calls.
-    PolynomialNotAllocated = 8,
-    /// Partition was not allocated
-    PartitionNotAllocated = 9,
 
     /// Dimensions or setup of input polynomial and partition do not match.
     PolynomialInvalid = -1,
@@ -52,26 +46,35 @@ pub enum PolsysError {
     /// Number of scale factors does not match number of equations.
     InsufficientScaleFactors = -7,
 
+    /// Input dimensions do not match.
+    DimensionMismatch = 100,
+    /// Polynomial is not allocated on calls.
+    PolynomialNotAllocated = 101,
+    /// Partition was not allocated
+    PartitionNotAllocated = 102,
     /// The indices given in a partition does not match the number of variables.
-    PartitionInvalidIndexCount = -8,
+    PartitionInvalidIndexCount = 103,
     /// The indices given in a partition have incorrect values (not in 1 <= i <= n).
-    PartitionIncorrectIndex = -9,
+    PartitionIncorrectIndex = 104,
+    /// Number of coefficients does not match given coefficients per equation.
+    PolynomialInvalidCoefficientCount = 105,
+    /// Invalid tolerance given (e.g. < 0).
+    InvalidTolerance = 106,
+    /// Invalid Bezout number (negative).
+    InvalidBezoutNumber = 107,
 }
 
 impl From<i32> for PolsysError {
     fn from(flag: i32) -> Self {
         match flag {
-            // initialization errors (returned by `init_polynomial`)
             0 => PolsysError::NoError,
+            // initialization errors (returned by `init_polynomial`)
             1 => PolsysError::AllocateSystemFailed,
             2 => PolsysError::AllocateInvalidObject,
             3 => PolsysError::AllocateFailed,
             4 => PolsysError::DeallocateSystemFailed,
             5 => PolsysError::DeallocateInvalidObject,
             6 => PolsysError::DeallocateFailed,
-            7 => PolsysError::InvalidTolerance,
-            8 => PolsysError::PolynomialNotAllocated,
-            9 => PolsysError::PartitionNotAllocated,
             // solver errors (returned by `polsys_plp`)
             -1 => PolsysError::PolynomialInvalid,
             -2 => PolsysError::NegativePower,
@@ -80,8 +83,14 @@ impl From<i32> for PolsysError {
             -5 => PolsysError::RepeatedPartition,
             -6 => PolsysError::InconsistentRecall,
             -7 => PolsysError::InsufficientScaleFactors,
-            -8 => PolsysError::PartitionInvalidIndexCount,
-            -9 => PolsysError::PartitionIncorrectIndex,
+            // custom
+            100 => PolsysError::DimensionMismatch,
+            101 => PolsysError::PolynomialNotAllocated,
+            102 => PolsysError::PartitionNotAllocated,
+            103 => PolsysError::PartitionInvalidIndexCount,
+            104 => PolsysError::PartitionIncorrectIndex,
+            105 => PolsysError::PolynomialInvalidCoefficientCount,
+            106 => PolsysError::InvalidTolerance,
             _ => PolsysError::UnknownError,
         }
     }
@@ -112,12 +121,6 @@ impl PolsysError {
                 "Failed to allocate invalid object"
             }
             PolsysError::InvalidTolerance => { "Invalid tolerance given (e.g. < 0)" }
-            PolsysError::PolynomialNotAllocated => {
-                "Polynomial has not been initialized (call Polynomial::init)"
-            }
-            PolsysError::PartitionNotAllocated => {
-                "Partition has not been initialized (call Partition::init)"
-            }
             // polsys_plp
             PolsysError::PolynomialInvalid => {
                 "Input polynomial and partitions dimensions or coefficient counts do not match"
@@ -140,12 +143,25 @@ impl PolsysError {
             PolsysError::InsufficientScaleFactors => {
                 "Less scale factors specified than system size"
             }
-            // partition
+            // custom
+            PolsysError::DimensionMismatch => "Input dimensions do not match",
+            PolsysError::PolynomialNotAllocated => {
+                "Polynomial has not been initialized (call Polynomial::init)"
+            }
+            PolsysError::PartitionNotAllocated => {
+                "Partition has not been initialized (call Partition::init)"
+            }
+            PolsysError::PolynomialInvalidCoefficientCount => {
+                "Number of coefficients does not match number of coefficients per equation"
+            }
             PolsysError::PartitionInvalidIndexCount => {
                 "Partition index count does not match system size"
             }
             PolsysError::PartitionIncorrectIndex => {
                 "Partition contains incorrect indices (not in 1 <= i <= n)"
+            }
+            PolsysError::InvalidBezoutNumber => {
+                "Bezout number if negative or otherwise invalid"
             }
         }
     }
@@ -498,20 +514,15 @@ pub fn bezout<const N: usize>(
     poly: &mut Polynomial<N>,
     part: &mut Partition,
     tol: f64,
-) -> Result<i32, PolsysError> {
-    println!("Initializing polynomial: {}", is_polynomial_allocated());
+) -> Result<usize, PolsysError> {
     poly.init()?;
-    println!("Initialized polynomial: {}", is_polynomial_allocated());
-
-    println!("Initializing partition: {}", is_partition_allocated());
     part.init()?;
-    println!("Initialized partition: {}", is_partition_allocated());
 
     let mut bplp: i32 = 0;
     let mut ierr: i32 = 0;
 
     unsafe {
-        bindings::bezout_plp_wrapper(
+        bindings::bezout_plp_wrap(
             poly.len() as i32,
             *poly.n_coeffs_per_eq.iter().max().unwrap(),
             tol,
@@ -519,12 +530,93 @@ pub fn bezout<const N: usize>(
             &mut ierr,
         )
     }
-    println!("ierr: {}", ierr);
+
+    if bplp < 0 {
+        return Err(PolsysError::InvalidBezoutNumber);
+    }
 
     if ierr == 0 {
-        Ok(bplp)
+        Ok(bplp as usize)
     } else {
         Err(PolsysError::from(ierr))
+    }
+}
+
+// }}}
+
+// {{{ Solve
+
+pub struct SolveState {
+    pub roots: Vec<Vec<Complex64>>,
+    pub nfe: Vec<i32>,
+    pub path_status: Vec<PathTrackingResult>,
+}
+
+impl SolveState {
+    #[allow(clippy::too_many_arguments)]
+    pub fn solve<const N: usize>(
+        poly: &mut Polynomial<N>,
+        part: &mut Partition,
+        tracktol: f64,
+        finaltol: f64,
+        singtol: f64,
+        n_path_steps: i32,
+        recall: bool,
+        no_scaling: bool,
+    ) -> Result<SolveState, PolsysError> {
+        let bplp = bezout(poly, part, tracktol).unwrap();
+
+        let n = poly.len();
+        let mut iflag1: i32 = 0;
+        let mut sspar = [0.0f64; 8];
+
+        let mut iflag2: Vec<i32> = Vec::with_capacity(bplp);
+        let mut arclen: Vec<f64> = Vec::with_capacity(bplp);
+        let mut lambda: Vec<f64> = Vec::with_capacity(bplp);
+        let mut roots: Vec<Complex64> = Vec::with_capacity((n + 1) * bplp);
+        let mut nfe: Vec<i32> = Vec::with_capacity(bplp);
+        let mut scale_factors: Vec<f64> = Vec::with_capacity(n);
+
+        unsafe {
+            bindings::polsys_plp_wrap(
+                n as i32,
+                tracktol,
+                finaltol,
+                singtol,
+                sspar.as_mut_ptr(),
+                bplp as i32,
+                &mut iflag1,
+                iflag2.as_mut_ptr(),
+                arclen.as_mut_ptr(),
+                lambda.as_mut_ptr(),
+                roots.as_mut_ptr(),
+                nfe.as_mut_ptr(),
+                scale_factors.as_mut_ptr(),
+                n_path_steps,
+                recall as i32,
+                no_scaling as i32,
+                0,
+            )
+        }
+
+        if iflag1 == 0 {
+            let path_status = iflag2
+                .iter()
+                .map(|iflag| PathTrackingResult::from(*iflag))
+                .collect();
+
+            Ok(SolveState {
+                roots: roots.chunks(bplp).take(n).map(|r| r.to_vec()).collect(),
+                nfe,
+                path_status,
+            })
+        } else {
+            Err(PolsysError::from(iflag1))
+        }
+    }
+
+    pub fn refine(&mut self) -> Result<&mut Self, PolsysError> {
+        Err(PolsysError::NoError)
     }
 }
 
@@ -608,6 +700,7 @@ mod tests {
             );
         }
 
+        assert_eq!(ierr, 0);
         assert!(is_polynomial_allocated());
         let _ = deallocate_polynomial();
     }
@@ -737,6 +830,8 @@ mod tests {
 
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
         println!("BPLP: {}", bplp);
+        assert_eq!(bplp, 4);
+
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
         println!("BPLP: {}", bplp);
         assert_eq!(bplp, 4);
@@ -744,6 +839,9 @@ mod tests {
         poly.deallocate().unwrap();
         part.deallocate().unwrap();
     }
+
+    #[test]
+    fn test_polsys_plp_2d_system() {}
 }
 
 // }}}

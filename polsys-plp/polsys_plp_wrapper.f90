@@ -2,8 +2,8 @@
 ! SPDX-License-Identifier: MIT
 
 module polsys_plp_wrapper
-    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES, BEZOUT_PLP
-    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex, c_double
+    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES, BEZOUT_PLP, POLSYS_PLP
+    use, intrinsic :: iso_c_binding, only: c_int32_t, c_double_complex, c_double, c_bool
 
     implicit none
 
@@ -12,7 +12,7 @@ contains
     ! {{{ Polynomial
 
     subroutine is_polynomial_allocated(flag) bind(c)
-        integer(c_int), intent(out) :: flag
+        integer(c_int32_t), intent(out) :: flag
 
         if (allocated(POLYNOMIAL)) then
             flag = 1
@@ -26,7 +26,7 @@ contains
     !! This is automatically called by `init_polynomial`.
     subroutine deallocate_polynomial(ierr) bind(c)
         ! routine arguments
-        integer(c_int), intent(out) :: ierr
+        integer(c_int32_t), intent(out) :: ierr
 
         ! local variables
         integer :: i, j
@@ -38,18 +38,27 @@ contains
                     do j = 1, POLYNOMIAL(i)%NUM_TERMS
                         if (ASSOCIATED(POLYNOMIAL(i)%TERM(j)%DEG)) then
                             deallocate (POLYNOMIAL(i)%TERM(j)%DEG, stat=ierr)
-                            if (ierr .ne. 0) return
+                            if (ierr .ne. 0) then
+                                ierr = ierr + 3
+                                return
+                            end if
                             nullify (POLYNOMIAL(i)%TERM(j)%DEG)
                         end if
                     end do
 
                     deallocate (POLYNOMIAL(i)%TERM, stat=ierr)
-                    if (ierr .ne. 0) return
+                    if (ierr .ne. 0) then
+                        ierr = ierr + 3
+                        return
+                    end if
                     nullify (POLYNOMIAL(i)%TERM)
                 end if
             end do
 
             deallocate (POLYNOMIAL, stat=ierr)
+            if (ierr .ne. 0) then
+                ierr = ierr + 3
+            end if
         end if
 
     end subroutine
@@ -92,26 +101,23 @@ contains
     subroutine init_polynomial(n, m, n_coeffs_per_eq, &
                                coefficients, degrees, ierr) bind(c)
         ! routine arguments
-        integer(c_int), intent(in), value :: n
-        integer(c_int), intent(in), value :: m
-        integer(c_int), dimension(n), intent(in) :: n_coeffs_per_eq
+        integer(c_int32_t), value, intent(in) :: n
+        integer(c_int32_t), value, intent(in) :: m
+        integer(c_int32_t), dimension(n), intent(in) :: n_coeffs_per_eq
         complex(c_double_complex), dimension(m), intent(in) :: coefficients
-        integer(c_int), dimension(n*m), intent(in) :: degrees
-        integer(c_int), intent(out) :: ierr
+        integer(c_int32_t), dimension(n*m), intent(in) :: degrees
+        integer(c_int32_t), intent(out) :: ierr
 
         ! local variables
         integer :: i, j, k, n_i
 
         if (m .ne. sum(n_coeffs_per_eq)) then
-            ierr = 20
+            ierr = 105
             return
         end if
 
         call deallocate_polynomial(ierr)
         if (ierr .ne. 0) then
-            ! NOTE: bumping the error codes so we distinguish deallocation form
-            ! allocation errors in the calling code
-            ierr = ierr + 4
             return
         end if
 
@@ -134,8 +140,6 @@ contains
                 k = k + 1
             end do
         end do
-
-        ierr = 0
     end subroutine
 
     ! }}}
@@ -144,7 +148,7 @@ contains
 
     subroutine is_partition_allocated(flag) bind(c)
         ! routine arguments
-        integer(c_int), intent(out) :: flag
+        integer(c_int32_t), intent(out) :: flag
 
         if (allocated(PARTITION) .and. allocated(PARTITION_SIZES)) then
             flag = 1
@@ -159,7 +163,7 @@ contains
     !! This is automatically called by `init_partition`.
     subroutine deallocate_partition(ierr) bind(c)
         ! routine arguments
-        integer(c_int), intent(out) :: ierr
+        integer(c_int32_t), intent(out) :: ierr
 
         ! local variables
         integer :: i, j
@@ -171,30 +175,45 @@ contains
                     do j = 1, PARTITION_SIZES(i)
                         if (associated(PARTITION(i)%SET(j)%INDEX)) then
                             deallocate (PARTITION(i)%SET(j)%INDEX, stat=ierr)
-                            if (ierr .ne. 0) return
+                            if (ierr .ne. 0) then
+                                ierr = ierr + 3
+                                return
+                            end if
                             nullify (PARTITION(i)%SET(j)%INDEX)
                         end if
 
                         if (associated(PARTITION(i)%SET(j)%START_COEF)) then
                             deallocate (PARTITION(i)%SET(j)%START_COEF, stat=ierr)
-                            if (ierr .ne. 0) return
+                            if (ierr .ne. 0) then
+                                ierr = ierr + 3
+                                return
+                            end if
                             nullify (PARTITION(i)%SET(j)%START_COEF)
                         end if
                     end do
 
                     deallocate (PARTITION(i)%SET, stat=ierr)
-                    if (ierr .ne. 0) return
+                    if (ierr .ne. 0) then
+                        ierr = ierr + 3
+                        return
+                    end if
                     nullify (PARTITION(i)%SET)
                 end if
             end do
 
             deallocate (PARTITION, stat=ierr)
-            if (ierr .ne. 0) return
+            if (ierr .ne. 0) then
+                ierr = ierr + 3
+                return
+            end if
         end if
 
         if (allocated(PARTITION_SIZES)) then
             deallocate (PARTITION_SIZES, stat=ierr)
-            if (ierr .ne. 0) return
+            if (ierr .ne. 0) then
+                ierr = ierr + 3
+                return
+            end if
         end if
     end subroutine
 
@@ -206,22 +225,19 @@ contains
     subroutine init_partition(n, m, p, n_sets_per_partition, n_indices_per_set, &
                               indices, ierr) bind(c)
         ! routine arguments
-        integer(c_int), intent(in), value :: n
-        integer(c_int), intent(in), value :: m
-        integer(c_int), intent(in), value :: p
-        integer(c_int), dimension(n), intent(in) :: n_sets_per_partition
-        integer(c_int), dimension(m), intent(in) :: n_indices_per_set
-        integer(c_int), dimension(p), intent(in) :: indices
-        integer(c_int), intent(out) :: ierr
+        integer(c_int32_t), value, intent(in) :: n
+        integer(c_int32_t), value, intent(in) :: m
+        integer(c_int32_t), value, intent(in) :: p
+        integer(c_int32_t), dimension(n), intent(in) :: n_sets_per_partition
+        integer(c_int32_t), dimension(m), intent(in) :: n_indices_per_set
+        integer(c_int32_t), dimension(p), intent(in) :: indices
+        integer(c_int32_t), intent(out) :: ierr
 
         ! local variables
         integer :: i, j, g_i, g_j, n_i, n_j
 
         call deallocate_partition(ierr)
         if (ierr .ne. 0) then
-            ! NOTE: bumping the error codes so we distinguish deallocation form
-            ! allocation errors in the calling code
-            ierr = ierr + 4
             return
         end if
 
@@ -260,21 +276,19 @@ contains
 
             g_i = g_i + n_i
         end do
-
-        ierr = 0
     end subroutine
 
     ! }}}
 
     ! {{{ Bezout
 
-    subroutine bezout_plp_wrapper(n, maxt, tol, bplp, ierr) bind(c)
+    subroutine bezout_plp_wrap(n, maxt, tol, bplp, ierr) bind(c)
         ! routine arguments
-        integer(c_int), intent(in), value :: n
-        integer(c_int), intent(in), value :: maxt
-        real(c_double), intent(in), value:: tol
-        integer(c_int), intent(out) :: bplp
-        integer(c_int), intent(out) :: ierr
+        integer(c_int32_t), value, intent(in) :: n
+        integer(c_int32_t), value, intent(in) :: maxt
+        real(c_double), value, intent(in):: tol
+        integer(c_int32_t), intent(out) :: bplp
+        integer(c_int32_t), intent(out) :: ierr
 
         ! local variables
         real(c_double) :: tol_plp
@@ -283,17 +297,17 @@ contains
         bplp = 0
 
         if (tol .le. 0.0_c_double) then
-            ierr = 7
+            ierr = 106
             return
         end if
 
         if (.not. allocated(POLYNOMIAL)) then
-            ierr = 8
+            ierr = 101
             return
         end if
 
         if (.not. allocated(PARTITION_SIZES) .or. .not. allocated(PARTITION)) then
-            ierr = 9
+            ierr = 102
             return
         end if
 
@@ -303,4 +317,79 @@ contains
     end subroutine
 
     ! }}}
+
+    ! {{{ POLSYS_PLP
+
+    subroutine polsys_plp_wrap(n, tracktol, finaltol, singtol, &
+                               sspar, bplp, iflag1, iflag2, &
+                               arclen, lambda, roots, nfe, scale_factors, &
+                               numrr, recall, no_scaling, user_f_df)
+        ! routine arguments
+        integer(c_int32_t), intent(in), value :: n
+        real(c_double), intent(in), value:: tracktol
+        real(c_double), intent(in), value:: finaltol
+        real(c_double), intent(in), value:: singtol
+        real(c_double), dimension(8), intent(inout) :: sspar
+        integer(c_int32_t), intent(in) :: bplp
+        integer(c_int32_t), intent(out) :: iflag1
+        integer(c_int32_t), dimension(bplp), intent(inout), target :: iflag2
+        real(c_double), dimension(bplp), intent(inout), target :: arclen
+        real(c_double), dimension(bplp), intent(inout), target :: lambda
+        complex(c_double_complex), dimension((n + 1)*bplp), intent(inout) :: roots
+        integer(c_int32_t), dimension(bplp), intent(inout), target :: nfe
+        real(c_double), dimension(n), intent(inout) :: scale_factors
+        integer(c_int32_t), intent(in), value :: numrr
+        integer(c_int32_t), intent(in), value :: recall
+        integer(c_int32_t), intent(in), value :: no_scaling
+        integer(c_int32_t), intent(in), value :: user_f_df
+
+        ! local variables
+        integer(c_int32_t) :: bplp_f
+        real(c_double) :: singtol_f
+        integer(c_int32_t), dimension(:), pointer :: iflag2_f
+        real(c_double), dimension(:), pointer :: arclen_f
+        real(c_double), dimension(:), pointer :: lambda_f
+        integer(c_int32_t), dimension(:), pointer :: nfe_f
+        complex(c_double_complex), dimension(:, :), pointer :: roots_f
+        logical :: recall_f, no_scaling_f, user_f_df_f
+
+        iflag1 = 0
+        if (tracktol .le. 0.0_c_double &
+            .or. finaltol .le. 0.0_c_double &
+            .or. singtol .le. 0.0_c_double) then
+            iflag1 = 106
+            return
+        end if
+
+        if (.not. allocated(POLYNOMIAL)) then
+            iflag1 = 101
+            return
+        end if
+
+        if (.not. allocated(PARTITION_SIZES) .or. .not. allocated(PARTITION)) then
+            iflag1 = 102
+            return
+        end if
+
+        singtol_f = singtol
+        bplp_f = bplp
+        iflag2_f => iflag2
+        arclen_f => arclen
+        lambda_f => lambda
+        nfe_f => nfe
+        recall_f = recall
+        no_scaling_f = no_scaling
+        user_f_df_f = user_f_df
+
+        call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                        sspar, bplp_f, iflag1, iflag2_f, &
+                        arclen_f, lambda_f, roots_f, nfe_f, scale_factors, &
+                        numrr, recall_f, no_scaling_f, user_f_df_f)
+        if (iflag1 .eq. 0) then
+            roots = reshape(roots_f, (/(n + 1) * bplp/))
+        end if
+    end subroutine
+
+    ! }}}
+
 end module
