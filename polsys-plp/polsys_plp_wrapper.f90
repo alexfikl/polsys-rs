@@ -323,7 +323,7 @@ contains
     subroutine polsys_plp_wrap(n, tracktol, finaltol, singtol, &
                                sspar, bplp, iflag1, iflag2, &
                                arclen, lambda, roots, nfe, scale_factors, &
-                               numrr, recall, no_scaling, user_f_df)
+                               numrr, recall, no_scaling, user_f_df) bind(c)
         ! routine arguments
         integer(c_int32_t), intent(in), value :: n
         real(c_double), intent(in), value:: tracktol
@@ -332,12 +332,12 @@ contains
         real(c_double), dimension(8), intent(inout) :: sspar
         integer(c_int32_t), intent(in) :: bplp
         integer(c_int32_t), intent(out) :: iflag1
-        integer(c_int32_t), dimension(bplp), intent(inout), target :: iflag2
-        real(c_double), dimension(bplp), intent(inout), target :: arclen
-        real(c_double), dimension(bplp), intent(inout), target :: lambda
-        complex(c_double_complex), dimension((n + 1)*bplp), intent(inout) :: roots
-        integer(c_int32_t), dimension(bplp), intent(inout), target :: nfe
-        real(c_double), dimension(n), intent(inout) :: scale_factors
+        integer(c_int32_t), dimension(bplp), intent(out) :: iflag2
+        real(c_double), dimension(bplp), intent(out) :: arclen
+        real(c_double), dimension(bplp), intent(out) :: lambda
+        complex(c_double_complex), dimension((n + 1)*bplp), intent(out) :: roots
+        integer(c_int32_t), dimension(bplp), intent(out) :: nfe
+        real(c_double), dimension(n), intent(out) :: scale_factors
         integer(c_int32_t), intent(in), value :: numrr
         integer(c_int32_t), intent(in), value :: recall
         integer(c_int32_t), intent(in), value :: no_scaling
@@ -351,7 +351,6 @@ contains
         real(c_double), dimension(:), pointer :: lambda_f
         integer(c_int32_t), dimension(:), pointer :: nfe_f
         complex(c_double_complex), dimension(:, :), pointer :: roots_f
-        logical :: recall_f, no_scaling_f, user_f_df_f
 
         iflag1 = 0
         if (tracktol .le. 0.0_c_double &
@@ -373,23 +372,34 @@ contains
 
         singtol_f = singtol
         bplp_f = bplp
-        iflag2_f => iflag2
-        arclen_f => arclen
-        lambda_f => lambda
-        nfe_f => nfe
-        recall_f = recall
-        no_scaling_f = no_scaling
-        user_f_df_f = user_f_df
 
         call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
                         sspar, bplp_f, iflag1, iflag2_f, &
                         arclen_f, lambda_f, roots_f, nfe_f, scale_factors, &
-                        numrr, recall_f, no_scaling_f, user_f_df_f)
+                        numrr, &
+                        recall .eq. 1, &
+                        no_scaling .eq. 1, &
+                        user_f_df .eq. 1)
+
         if (iflag1 .eq. 0) then
+            iflag2 = iflag2_f
+            arclen = arclen_f
+            lambda = lambda_f
             roots = reshape(roots_f, (/(n + 1) * bplp/))
+            nfe = nfe_f
         end if
     end subroutine
 
     ! }}}
 
 end module
+
+subroutine TARGET_SYSTEM_USER(N, PROJ_COEF, XC, F, DF)
+    use REAL_PRECISION
+
+    integer, intent(in):: N
+    complex(kind=R8), intent(in), dimension(N + 1):: PROJ_COEF, XC
+    complex(kind=R8), intent(out):: F(N), DF(N, N + 1)
+
+    stop
+end subroutine TARGET_SYSTEM_USER

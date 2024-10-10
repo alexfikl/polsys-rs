@@ -839,7 +839,7 @@ mod tests {
                 ([0, 0], c64(-3.0, 1.0)),
             ]),
         ]);
-        let mut part = make_homogeneous_partition(2).unwrap();
+        let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
         println!("BPLP: {}", bplp);
@@ -857,7 +857,30 @@ mod tests {
     }
 
     #[test]
-    fn test_polsys_plp_2d_system() {}
+    fn test_polsys_plp_2d_system() {
+        let mut poly = Polynomial::new(vec![
+            HashMap::from([
+                ([2, 0], c64(3.0, 1.3)),
+                ([0, 2], c64(1.0, 0.1)),
+                ([0, 0], c64(-1.0, 0.2)),
+            ]),
+            HashMap::from([
+                ([1, 1], c64(2.0, 0.5)),
+                ([0, 2], c64(1.0, 0.5)),
+                ([0, 0], c64(-3.0, 1.0)),
+            ]),
+        ]);
+        let mut part = make_homogeneous_partition(poly.len()).unwrap();
+
+        let result = SolveState::solve(
+            &mut poly, &mut part, 1.0e-8, 1.0e-8, 1.0e-8, 1, false, false,
+        )
+        .unwrap();
+
+        for i in 0..result.roots.len() {
+            println!("Root {}: {:?}", i, result.roots[i]);
+        }
+    }
 }
 
 // }}}
