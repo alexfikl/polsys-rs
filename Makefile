@@ -48,7 +48,7 @@ clippy:			## Run clippy lint checks (Rust)
 
 fortitude:		## Run fortitude link checks (Fortran)
 	fortitude check --line-length 88 \
-		--ignore T032 \
+		--ignore M001 \
 		polsys-plp/polsys_plp_wrapper.f90
 	@echo -e "\e[1;32mclippy clean!\e[0m"
 .PHONY: fortitude

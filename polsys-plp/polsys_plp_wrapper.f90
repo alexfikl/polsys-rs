@@ -19,7 +19,7 @@ contains
         else
             flag = 0
         end if
-    end subroutine
+    end subroutine is_polynomial_allocated
 
     !> @brief Deallocates the global polynomial value.
     !!
@@ -38,7 +38,7 @@ contains
                     do j = 1, POLYNOMIAL(i)%NUM_TERMS
                         if (ASSOCIATED(POLYNOMIAL(i)%TERM(j)%DEG)) then
                             deallocate (POLYNOMIAL(i)%TERM(j)%DEG, stat=ierr)
-                            if (ierr .ne. 0) then
+                            if (ierr /= 0) then
                                 ierr = ierr + 3
                                 return
                             end if
@@ -47,7 +47,7 @@ contains
                     end do
 
                     deallocate (POLYNOMIAL(i)%TERM, stat=ierr)
-                    if (ierr .ne. 0) then
+                    if (ierr /= 0) then
                         ierr = ierr + 3
                         return
                     end if
@@ -56,12 +56,11 @@ contains
             end do
 
             deallocate (POLYNOMIAL, stat=ierr)
-            if (ierr .ne. 0) then
+            if (ierr /= 0) then
                 ierr = ierr + 3
             end if
         end if
-
-    end subroutine
+    end subroutine deallocate_polynomial
 
     !> @brief Initialize a polynomial from its coefficients.
     !!
@@ -111,36 +110,36 @@ contains
         ! local variables
         integer :: i, j, k, n_i
 
-        if (m .ne. sum(n_coeffs_per_eq)) then
+        if (m /= sum(n_coeffs_per_eq)) then
             ierr = 105
             return
         end if
 
         call deallocate_polynomial(ierr)
-        if (ierr .ne. 0) then
+        if (ierr /= 0) then
             return
         end if
 
         allocate (POLYNOMIAL(n), stat=ierr)
-        if (ierr .ne. 0) return
+        if (ierr /= 0) return
 
         k = 1
         do i = 1, n
             n_i = n_coeffs_per_eq(i)
             POLYNOMIAL(i)%NUM_TERMS = n_i
             allocate (POLYNOMIAL(i)%TERM(n_i), stat=ierr)
-            if (ierr .ne. 0) return
+            if (ierr /= 0) return
 
             do j = 1, n_i
                 allocate (POLYNOMIAL(i)%TERM(j)%DEG(n + 1), stat=ierr)
-                if (ierr .ne. 0) return
+                if (ierr /= 0) return
 
                 POLYNOMIAL(i)%TERM(j)%COEF = coefficients(k)
                 POLYNOMIAL(i)%TERM(j)%DEG(1:n) = degrees(n * (k - 1) + 1:n * k)
                 k = k + 1
             end do
         end do
-    end subroutine
+    end subroutine init_polynomial
 
     ! }}}
 
@@ -156,7 +155,7 @@ contains
             flag = 0
         end if
 
-    end subroutine
+    end subroutine is_partition_allocated
 
     !> @brief Deallocate the global partition.
     !!
@@ -175,7 +174,7 @@ contains
                     do j = 1, PARTITION_SIZES(i)
                         if (associated(PARTITION(i)%SET(j)%INDEX)) then
                             deallocate (PARTITION(i)%SET(j)%INDEX, stat=ierr)
-                            if (ierr .ne. 0) then
+                            if (ierr /= 0) then
                                 ierr = ierr + 3
                                 return
                             end if
@@ -184,7 +183,7 @@ contains
 
                         if (associated(PARTITION(i)%SET(j)%START_COEF)) then
                             deallocate (PARTITION(i)%SET(j)%START_COEF, stat=ierr)
-                            if (ierr .ne. 0) then
+                            if (ierr /= 0) then
                                 ierr = ierr + 3
                                 return
                             end if
@@ -193,7 +192,7 @@ contains
                     end do
 
                     deallocate (PARTITION(i)%SET, stat=ierr)
-                    if (ierr .ne. 0) then
+                    if (ierr /= 0) then
                         ierr = ierr + 3
                         return
                     end if
@@ -202,7 +201,7 @@ contains
             end do
 
             deallocate (PARTITION, stat=ierr)
-            if (ierr .ne. 0) then
+            if (ierr /= 0) then
                 ierr = ierr + 3
                 return
             end if
@@ -210,12 +209,12 @@ contains
 
         if (allocated(PARTITION_SIZES)) then
             deallocate (PARTITION_SIZES, stat=ierr)
-            if (ierr .ne. 0) then
+            if (ierr /= 0) then
                 ierr = ierr + 3
                 return
             end if
         end if
-    end subroutine
+    end subroutine deallocate_partition
 
     !> @brief Initialize the global partition.
     !!
@@ -237,15 +236,15 @@ contains
         integer :: i, j, g_i, g_j, n_i, n_j
 
         call deallocate_partition(ierr)
-        if (ierr .ne. 0) then
+        if (ierr /= 0) then
             return
         end if
 
         allocate (PARTITION_SIZES(n), stat=ierr)
-        if (ierr .ne. 0) return
+        if (ierr /= 0) return
 
         allocate (PARTITION(n), stat=ierr)
-        if (ierr .ne. 0) return
+        if (ierr /= 0) return
 
         ! global indices into n_indices_per_set and indices
         g_i = 1
@@ -256,13 +255,13 @@ contains
             n_i = n_sets_per_partition(i)
 
             allocate (PARTITION(i)%SET(n_i), stat=ierr)
-            if (ierr .ne. 0) return
+            if (ierr /= 0) return
 
             do j = 1, n_i       ! for each set in the partition
                 n_j = n_indices_per_set(g_i + j - 1)
 
                 allocate (PARTITION(i)%SET(j)%INDEX(n_j), stat=ierr)
-                if (ierr .ne. 0) return
+                if (ierr /= 0) return
 
                 PARTITION(i)%SET(j)%NUM_INDICES = n_j
                 PARTITION(i)%SET(j)%INDEX(1:n_j) = indices(g_j:g_j + n_j - 1)
@@ -276,7 +275,7 @@ contains
 
             g_i = g_i + n_i
         end do
-    end subroutine
+    end subroutine init_partition
 
     ! }}}
 
@@ -296,7 +295,7 @@ contains
         ierr = 0
         bplp = 0
 
-        if (tol .le. 0.0_c_double) then
+        if (tol <= 0.0_c_double) then
             ierr = 106
             return
         end if
@@ -314,7 +313,7 @@ contains
         tol_plp = tol
         call BEZOUT_PLP(n, maxt, tol_plp, bplp)
 
-    end subroutine
+    end subroutine bezout_plp_wrap
 
     ! }}}
 
@@ -353,9 +352,9 @@ contains
         complex(c_double_complex), dimension(:, :), pointer :: roots_f
 
         iflag1 = 0
-        if (tracktol .le. 0.0_c_double &
-            .or. finaltol .le. 0.0_c_double &
-            .or. singtol .le. 0.0_c_double) then
+        if (tracktol <= 0.0_c_double &
+            .or. finaltol <= 0.0_c_double &
+            .or. singtol <= 0.0_c_double) then
             iflag1 = 106
             return
         end if
@@ -377,25 +376,25 @@ contains
                         sspar, bplp_f, iflag1, iflag2_f, &
                         arclen_f, lambda_f, roots_f, nfe_f, scale_factors, &
                         numrr, &
-                        recall .eq. 1, &
-                        no_scaling .eq. 1, &
-                        user_f_df .eq. 1)
+                        recall == 1, &
+                        no_scaling == 1, &
+                        user_f_df == 1)
 
-        if (iflag1 .eq. 0) then
+        if (iflag1 == 0) then
             iflag2 = iflag2_f
             arclen = arclen_f
             lambda = lambda_f
-            roots = reshape(roots_f, (/(n + 1) * bplp/))
+            roots = reshape(roots_f, [(n + 1) * bplp])
             nfe = nfe_f
         end if
-    end subroutine
+    end subroutine polsys_plp_wrap
 
     ! }}}
 
-end module
+end module polsys_plp_wrapper
 
 subroutine TARGET_SYSTEM_USER(N, PROJ_COEF, XC, F, DF)
-    use REAL_PRECISION
+    use:: REAL_PRECISION, only: R8
 
     integer, intent(in):: N
     complex(kind=R8), intent(in), dimension(N + 1):: PROJ_COEF, XC
