@@ -7,6 +7,19 @@ module polsys_plp_wrapper
 
     implicit none
 
+    private
+
+    public :: is_polynomial_allocated
+    public :: deallocate_polynomial
+    public :: init_polynomial
+
+    public :: is_partition_allocated
+    public :: deallocate_partition
+    public :: init_partition
+
+    public :: bezout_plp_wrap
+    public :: polsys_plp_wrap
+
 contains
 
     ! {{{ Polynomial
