@@ -115,38 +115,26 @@ impl PolsysError {
             PolsysError::AllocateInvalidObject => {
                 "An invalid data object has been specified for allocation"
             }
-            PolsysError::AllocateFailed => {
-                "Failed to allocate invalid object"
-            }
+            PolsysError::AllocateFailed => "Failed to allocate invalid object",
             PolsysError::DeallocateSystemFailed => {
                 "Error in system routine attempting to do deallocation"
             }
             PolsysError::DeallocateInvalidObject => {
                 "An invalid data object has been specified for deallocation"
             }
-            PolsysError::DeallocateFailed => {
-                "Failed to allocate invalid object"
-            }
-            PolsysError::InvalidTolerance => { "Invalid tolerance given (e.g. < 0)" }
+            PolsysError::DeallocateFailed => "Failed to allocate invalid object",
+            PolsysError::InvalidTolerance => "Invalid tolerance given (e.g. < 0)",
             // polsys_plp
             PolsysError::PolynomialInvalid => {
                 "Input polynomial and partitions dimensions or coefficient counts do not match"
             }
-            PolsysError::NegativePower => {
-                "Input polynomial has negative powers"
-            }
-            PolsysError::ConstantEquation => {
-                "Constant equation (all degrees are zero)"
-            }
+            PolsysError::NegativePower => "Input polynomial has negative powers",
+            PolsysError::ConstantEquation => "Constant equation (all degrees are zero)",
             PolsysError::InconsistentPartitionSize => {
                 "Partition sizes do not match up to system size"
             }
-            PolsysError::RepeatedPartition => {
-                "Repeated terms present in the partition"
-            }
-            PolsysError::InconsistentRecall => {
-                "Recall is not consistent (BPLP differs)"
-            }
+            PolsysError::RepeatedPartition => "Repeated terms present in the partition",
+            PolsysError::InconsistentRecall => "Recall is not consistent (BPLP differs)",
             PolsysError::InsufficientScaleFactors => {
                 "Less scale factors specified than system size"
             }
@@ -167,9 +155,7 @@ impl PolsysError {
             PolsysError::PartitionIncorrectIndex => {
                 "Partition contains incorrect indices (not in 1 <= i <= n)"
             }
-            PolsysError::InvalidBezoutNumber => {
-                "Bezout number if negative or otherwise invalid"
-            }
+            PolsysError::InvalidBezoutNumber => "Bezout number if negative or otherwise invalid",
             PolsysError::PolynomialDoubleInitialize => {
                 "Polynomial has already been initialized (cannot call init again)"
             }
@@ -790,8 +776,7 @@ mod tests {
 
     #[test]
     fn test_partition_m_homogeneous() {
-        let mut part =
-            make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]).unwrap();
+        let mut part = make_m_homogeneous_partition(3, vec![vec![1, 2], vec![3]]).unwrap();
 
         part.init().unwrap();
         assert!(is_partition_allocated());
