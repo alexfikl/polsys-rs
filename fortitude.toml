@@ -1,0 +1,19 @@
+[check]
+preview = true
+line-length = 88
+ignore = [
+    "C003",
+    "C092",
+    "FORT9900",
+    "FORT9901",
+    "FORT9902",
+    "FORT9903",
+    "FORT9911",
+    "FORT9920",
+    "FORT9921",
+    "FORT9930",
+    "FORT9931",
+    "FORT9940",
+    "FORT9950",
+    "FORT9960",
+]

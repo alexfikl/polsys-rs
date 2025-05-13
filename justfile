@@ -43,9 +43,7 @@ reuse:
 
 [doc("Run fortitude lint checks (Fortran)")]
 fortitude:
-    fortitude check --line-length 88 \
-        --preview --ignore T004,M001 \
-        polsys-plp/polsys_plp_wrapper.f90
+    fortitude check polsys-plp/polsys_plp_wrapper.f90
     @echo -e "\e[1;32m[fort] fortitude clean!\e[0m"
 
 [doc("Run clippy lint checks (Rust)")]

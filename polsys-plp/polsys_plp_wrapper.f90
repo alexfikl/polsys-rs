@@ -85,8 +85,9 @@ contains
     !!
     !! \f[
     !!      \begin{aligned}
-    !!      3 x^2 + y^2 - 1 & = 0, \\
+    !!      3 x^2 + y^2 - 1 & = 0,
     !!      2 x y + y^2 - 3 & = 0.
+    !!      \end{aligned}
     !! \f]
     !!
     !! This function is not thread-safe as it initializes a global variable
