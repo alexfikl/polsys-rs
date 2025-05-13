@@ -458,7 +458,7 @@ pub fn make_m_homogeneous_partition(
     }
 
     let m = part.len();
-    let n_sets_per_partition = iter::repeat(m as i32).take(n).collect();
+    let n_sets_per_partition = iter::repeat_n(m as i32, n).collect();
     let n_indices_per_set_eq: Vec<i32> = part.iter().map(|x| x.len() as i32).collect();
     let n_indices_per_set = (0..n).flat_map(|_| n_indices_per_set_eq.clone()).collect();
     let indices = (0..n)
