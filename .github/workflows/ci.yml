@@ -17,21 +17,21 @@ jobs:
     name: Licensing (REUSE)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: fsfe/reuse-action@v5
 
   typos:
     name: Spelling (typos)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: crate-ci/typos@master
 
   fortitude:
     name: Linting (fortitude)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: extractions/setup-just@v3
     - run: |
         pip install fortitude-lint
@@ -41,7 +41,7 @@ jobs:
     name: Linting (clippy)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: extractions/setup-just@v3
     - run: |
         just clippy
@@ -54,7 +54,7 @@ jobs:
     name: Testing (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: extractions/setup-just@v3
     - uses: Swatinem/rust-cache@v2
     - run: |
