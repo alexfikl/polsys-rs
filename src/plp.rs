@@ -196,12 +196,22 @@ impl PathTrackingError {
     fn as_str(&self) -> &'static str {
         match *self {
             PathTrackingError::UnknownError => "An unknown error has occurred",
-            PathTrackingError::TrackingToleranceFailed => "The specified error tolerance could not be met (increase TRACKTOL)",
-            PathTrackingError::MaximumStepsExceeded => "The maximum number of steps allowed was exceeded (increase NUMRR)",
-            PathTrackingError::BadJacobian => "The Jacobian matrix does not have full rank (the zero curve of the homotopy map cannot be followed any further)",
-            PathTrackingError::ZeroCurveLost => "The zero curve of the homotopy has been lost and no progress can be made (TRACKTOL and FINALTOL may be too lenient)",
-            PathTrackingError::NewtonConvergenceFailed => "The normal flow Newton iteration failed to converge (TRACKTOL or FINALTOL may be too stringent)",
-            PathTrackingError::RootSearchFailed => "Failed to find a root in 10*NUMRR iterations"
+            PathTrackingError::TrackingToleranceFailed => {
+                "The specified error tolerance could not be met (increase TRACKTOL)"
+            }
+            PathTrackingError::MaximumStepsExceeded => {
+                "The maximum number of steps allowed was exceeded (increase NUMRR)"
+            }
+            PathTrackingError::BadJacobian => {
+                "The Jacobian matrix does not have full rank (the zero curve of the homotopy map cannot be followed any further)"
+            }
+            PathTrackingError::ZeroCurveLost => {
+                "The zero curve of the homotopy has been lost and no progress can be made (TRACKTOL and FINALTOL may be too lenient)"
+            }
+            PathTrackingError::NewtonConvergenceFailed => {
+                "The normal flow Newton iteration failed to converge (TRACKTOL or FINALTOL may be too stringent)"
+            }
+            PathTrackingError::RootSearchFailed => "Failed to find a root in 10*NUMRR iterations",
         }
     }
 }
