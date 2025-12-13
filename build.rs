@@ -18,7 +18,6 @@ fn main() {
         .flag("-Wno-unused-label")
         .flag("-Wno-tabs")
         .flag("-O3")
-        .static_flag(true)
         .cargo_metadata(true)
         .compile("polsys_plp");
 

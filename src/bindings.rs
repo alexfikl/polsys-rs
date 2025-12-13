@@ -3,7 +3,7 @@
 
 use num::complex::Complex64;
 
-extern "C" {
+unsafe extern "C" {
     pub fn init_polynomial(
         n: i32,
         m: i32,
