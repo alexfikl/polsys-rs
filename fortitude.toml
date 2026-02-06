@@ -1,6 +1,6 @@
 [check]
 preview = true
-line-length = 88
+line-length = 89
 ignore = [
     "C003",
     "C092",
