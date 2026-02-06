@@ -3,7 +3,7 @@
 
 module polsys_plp_wrapper
     use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES, BEZOUT_PLP, POLSYS_PLP
-    use, intrinsic :: iso_c_binding, only:c_int32_t, c_double_complex, c_double, c_bool
+    use, intrinsic :: iso_c_binding, only: c_int32_t, c_double_complex, c_double, c_bool
 
     implicit none
 
@@ -408,13 +408,14 @@ contains
 end module polsys_plp_wrapper
 
 subroutine TARGET_SYSTEM_USER(N, PROJ_COEF, XC, F, DF)
+    use:: REAL_PRECISION, only: R8
     implicit none
 
-    use:: REAL_PRECISION, only: R8
-
     integer, intent(in):: N
-    complex(kind=R8), intent(in), dimension(N + 1):: PROJ_COEF, XC
-    complex(kind=R8), intent(out):: F(N), DF(N, N + 1)
+    complex(kind=R8), intent(in), dimension(N + 1):: PROJ_COEF
+    complex(kind=R8), intent(in), dimension(N + 1):: XC
+    complex(kind=R8), intent(out), dimension(N):: F
+    complex(kind=R8), intent(out), dimension(N, N + 1):: DF
 
     stop
 end subroutine TARGET_SYSTEM_USER
