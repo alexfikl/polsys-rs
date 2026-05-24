@@ -615,7 +615,7 @@ impl SolveState {
                 .collect();
 
             Ok(SolveState {
-                roots: roots.chunks(bplp).take(n).map(|r| r.to_vec()).collect(),
+                roots: roots.chunks(n + 1).map(|r| r.to_vec()).collect(),
                 nfe,
                 path_status,
             })
@@ -879,6 +879,33 @@ mod tests {
         assert!(!result.roots.is_empty(), "roots must not be empty");
         assert_eq!(result.path_status.len(), 4);
         assert_eq!(result.nfe.len(), 4);
+    }
+
+    #[test]
+    fn test_solve_roots_dimensions() {
+        let mut poly = Polynomial::new(vec![
+            HashMap::from([
+                ([2, 0], c64(3.0, 1.3)),
+                ([0, 2], c64(1.0, 0.1)),
+                ([0, 0], c64(-1.0, 0.2)),
+            ]),
+            HashMap::from([
+                ([1, 1], c64(2.0, 0.5)),
+                ([0, 2], c64(1.0, 0.5)),
+                ([0, 0], c64(-3.0, 1.0)),
+            ]),
+        ]);
+        let mut part = make_homogeneous_partition(poly.len()).unwrap();
+
+        let result = SolveState::solve(
+            &mut poly, &mut part, 1.0e-8, 1.0e-8, 1.0e-8, 1, false, false,
+        )
+        .unwrap();
+
+        assert_eq!(result.roots.len(), 4);
+        for root in &result.roots {
+            assert_eq!(root.len(), 3);
+        }
     }
 }
 
