@@ -2,8 +2,8 @@
 ! SPDX-License-Identifier: MIT
 
 module polsys_plp_wrapper
-    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES, BEZOUT_PLP, POLSYS_PLP
     use, intrinsic :: iso_c_binding, only: c_int32_t, c_double_complex, c_double, c_bool
+    use :: POLSYS, only:POLYNOMIAL, PARTITION, PARTITION_SIZES, BEZOUT_PLP, POLSYS_PLP
 
     implicit none
 
