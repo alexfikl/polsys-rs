@@ -730,7 +730,8 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]).unwrap();
+        ])
+        .unwrap();
 
         poly.init().unwrap();
         assert!(is_polynomial_allocated());
@@ -836,7 +837,8 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]).unwrap();
+        ])
+        .unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
@@ -867,7 +869,8 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]).unwrap();
+        ])
+        .unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let result = SolveState::solve(
@@ -897,7 +900,8 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]).unwrap();
+        ])
+        .unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let result = SolveState::solve(
