@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 use num::complex::Complex64;
-use std::collections::HashMap;
 use std::fmt;
 use std::iter;
 
@@ -254,9 +253,9 @@ impl From<i32> for PathTrackingResult {
 
 #[derive(Clone, Debug)]
 pub struct Polynomial<const N: usize> {
-    /// A full description of the polynomial system as a vector of mappings from
-    /// degree tuples (i_0, i_1, ..., i_n) to complex coefficients.
-    system: Vec<HashMap<[i32; N], Complex64>>,
+    /// A full description of the polynomial system as a vector of equations,
+    /// where each equation is a vector of (degree tuple, coefficient) pairs.
+    system: Vec<Vec<([i32; N], Complex64)>>,
 
     /// Number of coefficients per equation. This can be used to slice into the
     /// coefficients and degrees arrays.
@@ -285,7 +284,7 @@ fn deallocate_polynomial() -> i32 {
 }
 
 impl<const N: usize> Polynomial<N> {
-    pub fn new(system: Vec<HashMap<[i32; N], Complex64>>) -> Self {
+    pub fn new(system: Vec<Vec<([i32; N], Complex64)>>) -> Self {
         let n_coeffs_per_eq: Vec<i32> = system.iter().map(|c| c.len() as i32).collect();
 
         let n = system.len() as i32;
@@ -637,7 +636,6 @@ impl SolveState {
 mod tests {
     use super::*;
     use num::complex::c64;
-    use std::collections::HashMap;
 
     #[test]
     fn test_polysys_error_from_i32() {
@@ -717,16 +715,16 @@ mod tests {
     #[test]
     fn test_polynomial_wrapper() {
         let mut poly = Polynomial::new(vec![
-            HashMap::from([
+            vec![
                 ([2, 0], c64(3.0, 1.3)),
                 ([0, 2], c64(1.0, 0.1)),
                 ([0, 0], c64(-1.0, 0.2)),
-            ]),
-            HashMap::from([
+            ],
+            vec![
                 ([1, 1], c64(2.0, 0.5)),
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
-            ]),
+            ],
         ]);
 
         poly.init().unwrap();
@@ -823,16 +821,16 @@ mod tests {
     #[test]
     fn test_bezout_plp() {
         let mut poly = Polynomial::new(vec![
-            HashMap::from([
+            vec![
                 ([2, 0], c64(3.0, 1.3)),
                 ([0, 2], c64(1.0, 0.1)),
                 ([0, 0], c64(-1.0, 0.2)),
-            ]),
-            HashMap::from([
+            ],
+            vec![
                 ([1, 1], c64(2.0, 0.5)),
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
-            ]),
+            ],
         ]);
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
@@ -854,16 +852,16 @@ mod tests {
     #[test]
     fn test_polsys_plp_2d_system() {
         let mut poly = Polynomial::new(vec![
-            HashMap::from([
+            vec![
                 ([2, 0], c64(3.0, 1.3)),
                 ([0, 2], c64(1.0, 0.1)),
                 ([0, 0], c64(-1.0, 0.2)),
-            ]),
-            HashMap::from([
+            ],
+            vec![
                 ([1, 1], c64(2.0, 0.5)),
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
-            ]),
+            ],
         ]);
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
@@ -884,16 +882,16 @@ mod tests {
     #[test]
     fn test_solve_roots_dimensions() {
         let mut poly = Polynomial::new(vec![
-            HashMap::from([
+            vec![
                 ([2, 0], c64(3.0, 1.3)),
                 ([0, 2], c64(1.0, 0.1)),
                 ([0, 0], c64(-1.0, 0.2)),
-            ]),
-            HashMap::from([
+            ],
+            vec![
                 ([1, 1], c64(2.0, 0.5)),
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
-            ]),
+            ],
         ]);
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
