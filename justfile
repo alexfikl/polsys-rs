@@ -55,7 +55,7 @@ clippy:
 # {{{ develop
 
 [doc("Update Cargo.lock")]
-update:
+pin:
     cargo update --verbose
 
 [doc("Build project in debug mode")]
