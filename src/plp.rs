@@ -379,7 +379,7 @@ impl<const N: usize> Polynomial<N> {
 
 impl<const N: usize> Drop for Polynomial<N> {
     fn drop(&mut self) {
-        self.deallocate().unwrap();
+        let _ = self.deallocate();
     }
 }
 
@@ -485,7 +485,7 @@ pub fn make_m_homogeneous_partition(
 
 impl Drop for Partition {
     fn drop(&mut self) {
-        self.deallocate().unwrap();
+        let _ = self.deallocate();
     }
 }
 
