@@ -288,13 +288,16 @@ fn deallocate_polynomial() -> i32 {
 }
 
 impl<const N: usize> Polynomial<N> {
-    pub fn new(system: Vec<Vec<([i32; N], Complex64)>>) -> Self {
+    pub fn new(system: Vec<Vec<([i32; N], Complex64)>>) -> Result<Self, PolsysError> {
+        if system.len() != N {
+            return Err(PolsysError::DimensionMismatch);
+        }
+
         let n_coeffs_per_eq: Vec<i32> = system.iter().map(|c| c.len() as i32).collect();
 
-        let n = system.len() as i32;
         let m = n_coeffs_per_eq.iter().sum::<i32>();
         let mut coefficients: Vec<Complex64> = Vec::with_capacity(m as usize);
-        let mut degrees: Vec<i32> = Vec::with_capacity((n * m) as usize);
+        let mut degrees: Vec<i32> = Vec::with_capacity(N * m as usize);
 
         for p in system.iter() {
             for (degree, c) in p.iter() {
@@ -303,12 +306,12 @@ impl<const N: usize> Polynomial<N> {
             }
         }
 
-        Polynomial {
+        Ok(Polynomial {
             system,
             n_coeffs_per_eq,
             coefficients,
             degrees,
-        }
+        })
     }
 
     fn deallocate(&mut self) -> Result<&mut Self, PolsysError> {
@@ -347,8 +350,6 @@ impl<const N: usize> Polynomial<N> {
     }
 
     pub fn degrees(&self) -> Vec<i32> {
-        let n = self.system.len();
-
         self.n_coeffs_per_eq
             .iter()
             .scan(0, |start, &m| {
@@ -357,8 +358,8 @@ impl<const N: usize> Polynomial<N> {
                 *start = to as i32;
 
                 Some(
-                    self.degrees[(n * from)..(n * to)]
-                        .chunks(n)
+                    self.degrees[(N * from)..(N * to)]
+                        .chunks(N)
                         .map(|chunk| chunk.iter().sum())
                         .max(),
                 )
