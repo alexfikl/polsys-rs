@@ -343,7 +343,7 @@ contains
         real(c_double), intent(in), value:: finaltol
         real(c_double), intent(in), value:: singtol
         real(c_double), dimension(8), intent(inout) :: sspar
-        integer(c_int32_t), intent(in) :: bplp
+        integer(c_int32_t), intent(in), value :: bplp
         integer(c_int32_t), intent(out) :: iflag1
         integer(c_int32_t), dimension(bplp), intent(out) :: iflag2
         real(c_double), dimension(bplp), intent(out) :: arclen
@@ -364,6 +364,8 @@ contains
         real(c_double), dimension(:), pointer :: lambda_f
         integer(c_int32_t), dimension(:), pointer :: nfe_f
         complex(c_double_complex), dimension(:, :), pointer :: roots_f
+
+        nullify (iflag2_f, arclen_f, lambda_f, nfe_f, roots_f)
 
         iflag1 = 0
         if (tracktol <= 0.0_c_double &
@@ -386,13 +388,52 @@ contains
         singtol_f = singtol
         bplp_f = bplp
 
-        call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
-                        sspar, bplp_f, iflag1, iflag2_f, &
-                        arclen_f, lambda_f, roots_f, nfe_f, scale_factors, &
-                        numrr, &
-                        recall == 1, &
-                        no_scaling == 1, &
-                        user_f_df == 1)
+        ! POLSYS_PLP uses OPTIONAL arguments whose presence (not value)
+        ! changes behaviour, so we must only pass them when requested.
+        if (recall == 1 .and. no_scaling == 1 .and. user_f_df == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, &
+                            .true., .true., .true.)
+        else if (recall == 1 .and. no_scaling == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, .true., .true.)
+        else if (recall == 1 .and. user_f_df == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, &
+                            .true., USER_F_DF=.true.)
+        else if (recall == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, .true.)
+        else if (no_scaling == 1 .and. user_f_df == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, &
+                            NO_SCALING=.true., USER_F_DF=.true.)
+        else if (no_scaling == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, NO_SCALING=.true.)
+        else if (user_f_df == 1) then
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr, USER_F_DF=.true.)
+        else
+            call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
+                            sspar, bplp_f, iflag1, iflag2_f, &
+                            arclen_f, lambda_f, roots_f, nfe_f, &
+                            scale_factors, numrr)
+        end if
 
         if (iflag1 == 0) then
             iflag2 = iflag2_f
