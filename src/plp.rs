@@ -579,12 +579,12 @@ impl SolveState {
         let mut iflag1: i32 = 0;
         let mut sspar = [0.0f64; 8];
 
-        let mut iflag2: Vec<i32> = Vec::with_capacity(bplp);
-        let mut arclen: Vec<f64> = Vec::with_capacity(bplp);
-        let mut lambda: Vec<f64> = Vec::with_capacity(bplp);
-        let mut roots: Vec<Complex64> = Vec::with_capacity((n + 1) * bplp);
-        let mut nfe: Vec<i32> = Vec::with_capacity(bplp);
-        let mut scale_factors: Vec<f64> = Vec::with_capacity(n);
+        let mut iflag2 = vec![0i32; bplp];
+        let mut arclen = vec![0.0f64; bplp];
+        let mut lambda = vec![0.0f64; bplp];
+        let mut roots = vec![Complex64::new(0.0, 0.0); (n + 1) * bplp];
+        let mut nfe = vec![0i32; bplp];
+        let mut scale_factors = vec![0.0f64; n];
 
         unsafe {
             bindings::polsys_plp_wrap(
@@ -875,6 +875,10 @@ mod tests {
         for i in 0..result.roots.len() {
             println!("Root {}: {:?}", i, result.roots[i]);
         }
+
+        assert!(!result.roots.is_empty(), "roots must not be empty");
+        assert_eq!(result.path_status.len(), 4);
+        assert_eq!(result.nfe.len(), 4);
     }
 }
 
