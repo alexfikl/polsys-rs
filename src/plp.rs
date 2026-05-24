@@ -171,6 +171,8 @@ impl fmt::Display for PolsysError {
     }
 }
 
+impl std::error::Error for PolsysError {}
+
 #[derive(Eq, PartialEq, Debug)]
 pub enum PathTrackingError {
     /// An unnknown flag returned by the routine.
@@ -220,6 +222,8 @@ impl fmt::Display for PathTrackingError {
         fmt.write_str(self.as_str())
     }
 }
+
+impl std::error::Error for PathTrackingError {}
 
 #[derive(Debug)]
 #[allow(dead_code)]
