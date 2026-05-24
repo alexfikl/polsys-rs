@@ -577,7 +577,7 @@ impl SolveState {
         recall: bool,
         no_scaling: bool,
     ) -> Result<SolveState, PolsysError> {
-        let bplp = bezout(poly, part, tracktol).unwrap();
+        let bplp = bezout(poly, part, tracktol)?;
 
         let n = poly.len();
         let mut iflag1: i32 = 0;
@@ -730,7 +730,7 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]);
+        ]).unwrap();
 
         poly.init().unwrap();
         assert!(is_polynomial_allocated());
@@ -774,8 +774,8 @@ mod tests {
         unsafe {
             bindings::init_partition(
                 n_sets_per_partition.len() as i32,
-                2,
-                4,
+                n_indices_per_set.len() as i32,
+                indices.len() as i32,
                 n_sets_per_partition.as_ptr(),
                 n_indices_per_set.as_ptr(),
                 indices.as_ptr(),
@@ -836,7 +836,7 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]);
+        ]).unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let bplp = bezout(&mut poly, &mut part, 1.0e-8).unwrap();
@@ -867,7 +867,7 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]);
+        ]).unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let result = SolveState::solve(
@@ -897,7 +897,7 @@ mod tests {
                 ([0, 2], c64(1.0, 0.5)),
                 ([0, 0], c64(-3.0, 1.0)),
             ],
-        ]);
+        ]).unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let result = SolveState::solve(
