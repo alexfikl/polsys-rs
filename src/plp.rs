@@ -106,7 +106,7 @@ impl PolsysError {
     fn as_str(&self) -> &'static str {
         match *self {
             PolsysError::NoError => "Finished successfully",
-            PolsysError::UnknownError => "Unknown error ocured",
+            PolsysError::UnknownError => "Unknown error occurred",
             // allocation
             PolsysError::AllocateSystemFailed => {
                 "Error in system routine attempting to do allocation"
