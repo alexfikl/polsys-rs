@@ -1,8 +1,19 @@
 [package]
 name = "polsys"
 version = "0.1.0"
+authors = ["Alexandru Fikl <alexfikl@gmail.com>"]
 edition = "2024"
+description = "Rust bindings for the POLSYS_PLP Fortran library that solves polynomial systems"
+keywords = ["polynomial", "homotopy", "fortran"]
+categories = ["algorithms", "science"]
+readme = "README.md"
+repository = "https://github.com/alexfikl/polsys-rs"
 license = "MIT AND LicenseRef-ACM"
+exclude = [
+    ".github/*",
+    ".gitignore",
+]
+
 
 [features]
 system-lapack = []
