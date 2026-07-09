@@ -199,6 +199,14 @@ impl From<i32> for PathTrackingResult {
 
 // {{{ Polynomial
 
+/// A system of `N` polynomial equations in `N` variables.
+///
+/// Each equation is a list of terms, where each term pairs a degree tuple
+/// (exponents for the `N` variables) with a complex coefficient. Constant
+/// terms use an all-zeros degree tuple.
+///
+/// Use [`term`] to build term tuples and [`Polynomial::new`] to construct
+/// the system.
 #[derive(Clone, Debug)]
 pub struct Polynomial<const N: usize> {
     /// Number of coefficients per equation. This can be used to slice into the
@@ -233,6 +241,13 @@ pub fn term<const N: usize>(deg: [i32; N], coeff: impl Into<Complex64>) -> ([i32
 }
 
 impl<const N: usize> Polynomial<N> {
+    /// Creates a polynomial system from a list of equations.
+    ///
+    /// `system` must have exactly `N` entries (one per equation). Each entry
+    /// is a `Vec` of `(degree_tuple, coefficient)` pairs as returned by, e.g.,
+    /// [`term`].
+    ///
+    /// Returns [`PolsysError::DimensionMismatch`] if `system.len() != N`.
     pub fn new(system: Vec<Vec<([i32; N], Complex64)>>) -> Result<Self, PolsysError> {
         if system.len() != N {
             return Err(PolsysError::DimensionMismatch);
@@ -268,6 +283,14 @@ impl<const N: usize> Polynomial<N> {
         }
     }
 
+    /// Initialises the underlying Fortran library with this polynomial.
+    ///
+    /// Must be called once (and only once) before solving. Most users do not
+    /// need to call this directly -- [`bezout`] and [`PolsysSolver::solve`]
+    /// call it automatically.
+    ///
+    /// Returns [`PolsysError::PolynomialDoubleInitialize`] if a polynomial
+    /// is already initialised.
     pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
         if is_polynomial_allocated() {
             return Err(PolsysError::PolynomialDoubleInitialize);
@@ -293,6 +316,10 @@ impl<const N: usize> Polynomial<N> {
         }
     }
 
+    /// Returns the degree of each equation in the system.
+    ///
+    /// The degree of an equation is the maximum total degree among its terms
+    /// (sum of the exponents in the degree tuple).
     pub fn degrees(&self) -> [i32; N] {
         let mut start = 0usize;
         array::from_fn(|i| {
@@ -309,14 +336,19 @@ impl<const N: usize> Polynomial<N> {
         })
     }
 
+    /// Total degree of the system -- the product of the per-equation
+    /// degrees. For a 1-homogeneous partition this equals the Bezout
+    /// number (the number of paths tracked).
     pub fn total_degree(&self) -> i32 {
         self.degrees().iter().product()
     }
 
+    /// Number of equations and variables (`N`).
     pub fn len(&self) -> usize {
         N
     }
 
+    /// Returns `true` if `N == 0`.
     pub fn is_empty(&self) -> bool {
         N == 0
     }
@@ -503,8 +535,10 @@ pub fn bezout<const N: usize>(
 
 // {{{ Solve
 
-/// Outcome of a solve: the roots found, the per-path number of function
-/// evaluations, and the per-path tracking status.
+/// Outcome of a [`PolsysSolver::solve`].
+///
+/// It contains the roots found, the per-path number of function evaluations,
+/// and the per-path tracking status.
 #[derive(Debug)]
 pub struct SolveResult {
     /// Number of affine variables in the solved system. Each root occupies
@@ -558,7 +592,7 @@ pub struct PolsysSolver {
     pub recall: bool,
     /// Disable automatic scaling of the polynomial equations.
     pub no_scaling: bool,
-    /// Seed for the Fortran random-number generator.  `None` (the default)
+    /// Seed for the Fortran random-number generator. `None` (the default)
     /// leaves the RNG at its implementation-defined default; `Some(v)` seeds
     /// with `v` (broadcast across the seed array) before every solve.
     pub seed: Option<i32>,
