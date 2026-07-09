@@ -257,11 +257,6 @@ impl From<i32> for PathTrackingResult {
 
 #[derive(Clone, Debug)]
 pub struct Polynomial<const N: usize> {
-    /// A full description of the polynomial system as a vector of equations,
-    /// where each equation is a vector of (degree tuple, coefficient) pairs.
-    /// These can most easily be constructed using `term`.
-    system: Vec<Vec<([i32; N], Complex64)>>,
-
     /// Number of coefficients per equation. This can be used to slice into the
     /// coefficients and degrees arrays.
     n_coeffs_per_eq: Vec<i32>,
@@ -313,7 +308,6 @@ impl<const N: usize> Polynomial<N> {
         }
 
         Ok(Polynomial {
-            system,
             n_coeffs_per_eq,
             coefficients,
             degrees,
@@ -339,7 +333,7 @@ impl<const N: usize> Polynomial<N> {
 
         unsafe {
             bindings::init_polynomial(
-                self.system.len() as i32,
+                N as i32,
                 self.coefficients.len() as i32,
                 self.n_coeffs_per_eq.as_ptr(),
                 self.coefficients.as_ptr(),
@@ -379,11 +373,11 @@ impl<const N: usize> Polynomial<N> {
     }
 
     pub fn len(&self) -> usize {
-        self.system.len()
+        N
     }
 
     pub fn is_empty(&self) -> bool {
-        self.system.is_empty()
+        N == 0
     }
 }
 
@@ -568,11 +562,14 @@ pub fn bezout<const N: usize>(
 /// Outcome of a solve: the roots found, the per-path number of function
 /// evaluations, and the per-path tracking status.
 pub struct SolveResult {
-    /// Number of affine variables in the solved system. Each root vector has
-    /// length `n_vars + 1` (the extra entry is the homogenizing coordinate).
+    /// Number of affine variables in the solved system. Each root occupies
+    /// `n_vars + 1` contiguous entries in [`SolveResult::roots`].
     pub n_vars: usize,
-    /// Roots, one vector per path, each of length `n_vars + 1`.
-    pub roots: Vec<Vec<Complex64>>,
+    /// All roots, laid out contiguously: root `i` occupies the entries
+    /// `roots[i * (n_vars + 1) .. (i + 1) * (n_vars + 1)]`. The final entry of
+    /// each root is the homogenizing coordinate. Use
+    /// [`SolveResult::affine_roots`] for per-root access.
+    pub roots: Vec<Complex64>,
     /// Number of function evaluations along each tracked path.
     pub nfe: Vec<i32>,
     /// Tracking status for each path.
@@ -580,12 +577,19 @@ pub struct SolveResult {
 }
 
 impl SolveResult {
+    /// Number of roots found.
+    pub fn n_roots(&self) -> usize {
+        self.roots.len() / (self.n_vars + 1)
+    }
+
     /// Iterates over the affine part of each root: the first `n_vars`
     /// coordinates of every root, dropping the trailing homogenizing
     /// coordinate. Each slice borrows from [`SolveResult::roots`] directly, so
     /// no allocation is performed.
     pub fn affine_roots(&self) -> impl Iterator<Item = &[Complex64]> {
-        self.roots.iter().map(move |r| &r[..self.n_vars])
+        self.roots
+            .chunks(self.n_vars + 1)
+            .map(move |r| &r[..self.n_vars])
     }
 }
 
@@ -723,7 +727,7 @@ impl PolsysSolver {
 
             Ok(SolveResult {
                 n_vars: n,
-                roots: roots.chunks(n + 1).map(|r| r.to_vec()).collect(),
+                roots,
                 nfe,
                 path_status,
             })
@@ -977,11 +981,11 @@ mod tests {
             .solve_with_partition(&mut poly, &mut part)
             .unwrap();
 
-        for i in 0..result.roots.len() {
-            println!("Root {}: {:?}", i, result.roots[i]);
+        for (i, root) in result.affine_roots().enumerate() {
+            println!("Root {i}: {root:?}");
         }
 
-        assert!(!result.roots.is_empty(), "roots must not be empty");
+        assert_eq!(result.n_roots(), 4);
         assert_eq!(result.path_status.len(), 4);
         assert_eq!(result.nfe.len(), 4);
     }
@@ -1007,9 +1011,10 @@ mod tests {
             .solve_with_partition(&mut poly, &mut part)
             .unwrap();
 
-        assert_eq!(result.roots.len(), 4);
-        for root in &result.roots {
-            assert_eq!(root.len(), 3);
+        assert_eq!(result.n_roots(), 4);
+        assert_eq!(result.roots.len(), result.n_roots() * (result.n_vars + 1));
+        for root in result.roots.chunks(result.n_vars + 1) {
+            assert_eq!(root.len(), result.n_vars + 1);
         }
 
         assert_eq!(result.n_vars, 2);

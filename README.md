@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Solve with a globally convergent homotopy.
     let result = PolsysSolver::new().solve(&mut poly)?;
 
-    println!("Found {} roots:", result.roots.len());
+    println!("Found {} roots:", result.n_roots());
     for (i, root) in result.affine_roots().enumerate() {
         println!("{i:2}: {root:?}");
     }
