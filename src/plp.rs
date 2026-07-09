@@ -163,6 +163,11 @@ pub enum PathTrackingError {
     RootSearchFailed = 7,
 }
 
+/// Outcome of tracking a single homotopy path.
+///
+/// An `Ok(n)` means the path converged after `n` end-game retries.
+/// An `Err(e)` reports the specific failure mode (see
+/// [`PathTrackingError`]).
 #[derive(Debug)]
 pub struct PathTrackingResult(Result<u32, PathTrackingError>);
 
