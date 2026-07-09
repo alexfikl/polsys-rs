@@ -2,6 +2,7 @@
 name = "polsys"
 version = "0.1.0"
 edition = "2024"
+license = "MIT AND LicenseRef-ACM"
 
 [features]
 system-lapack = []
