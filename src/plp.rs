@@ -26,7 +26,7 @@ pub enum PolsysError {
     #[error("An invalid data object has been specified for allocation")]
     AllocateInvalidObject = 2,
     /// Both system and object errors in allocation.
-    #[error("Failed to allocate invalid object")]
+    #[error("Failed to allocate")]
     AllocateFailed = 3,
     /// Error in system routine attempting to do deallocation.
     #[error("Error in system routine attempting to do deallocation")]
@@ -35,11 +35,12 @@ pub enum PolsysError {
     #[error("An invalid data object has been specified for deallocation")]
     DeallocateInvalidObject = 5,
     /// Both system and object errors in deallocation.
-    #[error("Failed to allocate invalid object")]
+    #[error("Failed to deallocate")]
     DeallocateFailed = 6,
 
-    /// Dimensions or setup of input polynomial and partition do not match.
-    #[error("Input polynomial and partitions dimensions or coefficient counts do not match")]
+    /// The polynomial or partition data structure is malformed (wrong
+    /// array sizes, missing arrays, mismatched dimensions).
+    #[error("Polynomial or partition is improperly allocated")]
     PolynomialInvalid = -1,
     /// Terms with negative powers found in the polynomial.
     #[error("Input polynomial has negative powers")]
@@ -47,14 +48,16 @@ pub enum PolsysError {
     /// One of the equations in the system is a constant.
     #[error("Constant equation (all degrees are zero)")]
     ConstantEquation = -3,
-    /// Partition sizes do not add up to the number of equations.
-    #[error("Partition sizes do not match up to system size")]
+    /// Partition sizes do not add up to the number of variables.
+    #[error("Partition indices do not cover all variables")]
     InconsistentPartitionSize = -4,
-    /// A partition is defined more than once.
-    #[error("Repeated terms present in the partition")]
+    /// The sets in a partition component do not cover variables 1..N
+    /// exactly once (some variable index is missing or duplicated).
+    #[error("Partition does not cover variables exactly once")]
     RepeatedPartition = -5,
-    /// Array sizes used for recall do not have valid sizes.
-    #[error("Recall is not consistent (BPLP differs)")]
+    /// The Bezout number or the path-tracking arrays from a previous
+    /// solve are inconsistent with the current call.
+    #[error("Recall data is inconsistent with previous solve")]
     InconsistentRecall = -6,
     /// Number of scale factors does not match number of equations.
     #[error("Less scale factors specified than system size")]
@@ -82,7 +85,7 @@ pub enum PolsysError {
     #[error("Invalid tolerance given (e.g. < 0)")]
     InvalidTolerance = 106,
     /// Invalid Bezout number (negative).
-    #[error("Bezout number if negative or otherwise invalid")]
+    #[error("Bezout number is negative or otherwise invalid")]
     InvalidBezoutNumber = 107,
     /// Polynomial is already initialized.
     #[error("Polynomial has already been initialized (cannot call init again)")]
@@ -129,7 +132,7 @@ impl From<i32> for PolsysError {
 
 #[derive(Eq, PartialEq, Debug, thiserror::Error)]
 pub enum PathTrackingError {
-    /// An unnknown flag returned by the routine.
+    /// An unknown flag returned by the routine.
     #[error("An unknown error has occurred")]
     UnknownError = -1,
 
@@ -192,7 +195,7 @@ impl From<i32> for PathTrackingResult {
     }
 }
 
-/// }}}
+// }}}
 
 // {{{ Polynomial
 
@@ -536,9 +539,10 @@ impl SolveResult {
 }
 
 /// Configurable driver for solving a polynomial system by globally convergent
-/// homotopy continuation. Build with [`PolsysSolver::new`] (or
-/// [`PolsysSolver::default`]), tune via the builder methods, then call
-/// [`PolsysSolver::solve`].
+/// homotopy continuation.
+///
+/// Build with [`PolsysSolver::new`] (or [`PolsysSolver::default`]), tune via
+/// the builder methods, then call [`PolsysSolver::solve`].
 #[derive(Clone, Copy, Debug)]
 pub struct PolsysSolver {
     /// Path-tracking tolerance for the homotopy-continuation phase.
@@ -616,8 +620,11 @@ impl PolsysSolver {
         self
     }
 
-    /// Sets the RNG seed.  `None` leaves the Fortran default;
-    /// `Some(v)` broadcasts `v` across the seed array.
+    /// Sets the RNG seed.
+    ///
+    /// `None` leaves the Fortran default and `Some(v)` broadcasts `v` across
+    /// the seed array. This is in general not needed, but if you see the tracking
+    /// fail over and over, you may want to remove any non-determinism.
     pub fn with_seed(mut self, seed: Option<i32>) -> Self {
         self.seed = seed;
         self
