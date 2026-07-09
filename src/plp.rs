@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use num::complex::Complex64;
+use std::array;
 use std::fmt;
 use std::iter;
 
@@ -259,7 +260,7 @@ impl From<i32> for PathTrackingResult {
 pub struct Polynomial<const N: usize> {
     /// Number of coefficients per equation. This can be used to slice into the
     /// coefficients and degrees arrays.
-    n_coeffs_per_eq: Vec<i32>,
+    n_coeffs_per_eq: [i32; N],
     /// A flat list of complex coefficients for the whole system, i.e. the first
     /// `n_coeffs_per_eq[0]` coefficients belong to the first equation.
     coefficients: Vec<Complex64>,
@@ -294,7 +295,7 @@ impl<const N: usize> Polynomial<N> {
             return Err(PolsysError::DimensionMismatch);
         }
 
-        let n_coeffs_per_eq: Vec<i32> = system.iter().map(|c| c.len() as i32).collect();
+        let n_coeffs_per_eq: [i32; N] = array::from_fn(|i| system[i].len() as i32);
 
         let m = n_coeffs_per_eq.iter().sum::<i32>();
         let mut coefficients: Vec<Complex64> = Vec::with_capacity(m as usize);
@@ -350,22 +351,19 @@ impl<const N: usize> Polynomial<N> {
     }
 
     pub fn degrees(&self) -> [i32; N] {
-        let mut result = [0i32; N];
         let mut start = 0usize;
-
-        for (i, &m) in self.n_coeffs_per_eq.iter().enumerate() {
-            let m = m as usize;
+        array::from_fn(|i| {
+            let m = self.n_coeffs_per_eq[i] as usize;
             let from = N * start;
             let to = N * (start + m);
-            result[i] = self.degrees[from..to]
+            let degree = self.degrees[from..to]
                 .chunks(N)
                 .map(|chunk| chunk.iter().sum())
                 .max()
                 .unwrap_or(0);
             start += m;
-        }
-
-        result
+            degree
+        })
     }
 
     pub fn total_degree(&self) -> i32 {
