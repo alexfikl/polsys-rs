@@ -1049,9 +1049,9 @@ mod tests {
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
         let result = PolsysSolver::new()
-            .with_tracktol(1.0e-10)
-            .with_finaltol(1.0e-12)
-            .with_seed(Some(32749))
+            .with_tracktol(1.0e-8)
+            .with_finaltol(1.0e-14)
+            .with_singtol(0.0)
             .solve_with_partition(&mut poly, &mut part)
             .unwrap();
 
@@ -1061,25 +1061,15 @@ mod tests {
         let sqrt2 = 2.0f64.sqrt();
         let found: Vec<&[Complex64]> = result.affine_roots().collect();
 
-        // The two non-singular roots converge to ~1e-15.
-        let non_singular: [Vec<Complex64>; 2] = [
+        let reference: [Vec<Complex64>; 5] = [
+            vec![c64(1.0, 0.0), c64(0.0, 0.0), c64(0.0, 0.0)],
+            vec![c64(0.0, 0.0), c64(1.0, 0.0), c64(0.0, 0.0)],
+            vec![c64(0.0, 0.0), c64(0.0, 0.0), c64(1.0, 0.0)],
             vec![c64(-1.0 + sqrt2, 0.0); 3],
             vec![c64(-1.0 - sqrt2, 0.0); 3],
         ];
-        assert_roots_contain(&found, &non_singular, 1.0e-10);
 
-        // The singular root (1, 0, 0) converges to ~1e-13 in practice.
-        assert_roots_contain(
-            &found,
-            &[vec![c64(1.0, 0.0), c64(0.0, 0.0), c64(0.0, 0.0)]],
-            1.0e-10,
-        );
-
-        // The other singular roots ((0, 1, 0) and (0, 0, 1)) converge
-        // poorly because the Jacobian is exactly rank-deficient there;
-        // verify that tracking completed for a reasonable number of paths.
-        let n_ok = result.path_status.iter().filter(|s| s.is_ok()).count();
-        assert!(n_ok >= 3, "expected >= 3 successful paths, got {n_ok}");
+        assert_roots_contain(&found, &reference, 1.0e-10);
     }
 
     #[test]
