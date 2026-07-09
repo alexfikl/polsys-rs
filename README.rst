@@ -12,12 +12,16 @@ Example
 =======
 
 The following snippet solves a system of 4 polynomial equations in 4 complex
-unknowns::
+unknowns:
 
-    f1(x) = x1^2 + x2     - 1
-    f2(x) = x2^2 + x3     - 1
-    f3(x) = x3^2 + x4     - 1
-    f4(x) = x4^2 + x1     - 1
+.. math::
+
+    \begin{cases}
+    x1^2 + x2 - 1 = 0,
+    x2^2 + x3 - 1 = 0,
+    x3^2 + x4 - 1 = 0,
+    x4^2 + x1 - 1 = 0,
+    \end{cases}
 
 using the homotopy method and prints all the computed roots.
 
