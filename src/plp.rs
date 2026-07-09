@@ -460,12 +460,12 @@ pub fn make_m_homogeneous_partition(
     n: usize,
     part: Vec<Vec<u32>>,
 ) -> Result<Partition, PolsysError> {
-    let flat_part: Vec<u32> = part.concat();
-    if flat_part.len() != n {
+    let flat_count: usize = part.iter().map(|x| x.len()).sum();
+    if flat_count != n {
         return Err(PolsysError::PartitionInvalidIndexCount);
     }
 
-    if flat_part.iter().any(|&i| i < 1 || i > (n as u32)) {
+    if part.iter().flatten().any(|&i| i < 1 || i > n as u32) {
         return Err(PolsysError::PartitionIncorrectIndex);
     }
 
@@ -476,8 +476,8 @@ pub fn make_m_homogeneous_partition(
         .flat_map(|_| n_indices_per_set_eq.iter().copied())
         .collect();
     let indices = (0..n)
-        .flat_map(|_| flat_part.iter())
-        .map(|x| *x as i32)
+        .flat_map(|_| part.iter().flatten().copied())
+        .map(|x| x as i32)
         .collect();
 
     Ok(Partition {
@@ -695,7 +695,7 @@ impl PolsysSolver {
         let mut lambda = vec![0.0f64; bplp];
         let mut roots = vec![Complex64::new(0.0, 0.0); (n + 1) * bplp];
         let mut nfe = vec![0i32; bplp];
-        let mut scale_factors = vec![0.0f64; n];
+        let mut scale_factors = [0.0f64; N];
 
         unsafe {
             bindings::polsys_plp_wrap(
