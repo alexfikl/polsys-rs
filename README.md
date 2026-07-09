@@ -1,5 +1,7 @@
 # POLSYS-RS
 
+[![Build Status](https://github.com/alexfikl/polsys-rs/workflows/CI/badge.svg)](https://github.com/alexfikl/polsys-rs/actions?query=branch%3Amain+workflow%3ACI)
+
 This crate provides a Rust wrapper around the `POLSYS_PLP` Fortran library
 by Wise, Sommese, and Watson in their [ACM paper](https://doi.org/10.1145/347837.347885).
 The library can solve a system of N polynomial equations with complex
