@@ -4,6 +4,7 @@
 use num::complex::Complex64;
 use std::array;
 use std::iter;
+use std::marker::PhantomData;
 
 use crate::bindings;
 
@@ -207,11 +208,14 @@ impl From<i32> for PathTrackingResult {
 /// A system of `N` polynomial equations in `N` variables.
 ///
 /// Each equation is a list of terms, where each term pairs a degree tuple
-/// (exponents for the `N` variables) with a complex coefficient. Constant
+/// (exponents for the `N` variables) with a complex coefficient.  Constant
 /// terms use an all-zeros degree tuple.
 ///
 /// Use [`term`] to build term tuples and [`Polynomial::new`] to construct
 /// the system.
+///
+/// This type is `!Send` and `!Sync` because the underlying Fortran library
+/// uses global state.
 #[derive(Clone, Debug)]
 pub struct Polynomial<const N: usize> {
     /// Number of coefficients per equation. This can be used to slice into the
@@ -223,6 +227,8 @@ pub struct Polynomial<const N: usize> {
     /// A flat list of degrees for the whole system, i.e. the first
     /// `n * n_coeffs_per_eq[0]` degrees belong to the first equation.
     degrees: Vec<i32>,
+
+    _marker: PhantomData<*const ()>,
 }
 
 fn is_polynomial_allocated() -> bool {
@@ -275,6 +281,7 @@ impl<const N: usize> Polynomial<N> {
             n_coeffs_per_eq,
             coefficients,
             degrees,
+            _marker: PhantomData,
         })
     }
 
@@ -374,11 +381,16 @@ impl<const N: usize> Drop for Polynomial<N> {
 /// The partition groups variables into sets per equation.  Use
 /// [`make_homogeneous_partition`], [`make_m_homogeneous_partition`], or
 /// [`make_plp_homogeneous_partition`] to construct one.
+///
+/// This type is `!Send` and `!Sync` because the underlying Fortran library
+/// uses global state.
 #[derive(Clone, Debug)]
 pub struct Partition {
     pub n_sets_per_partition: Vec<i32>,
     pub n_indices_per_set: Vec<i32>,
     pub indices: Vec<i32>,
+
+    _marker: PhantomData<*const ()>,
 }
 
 fn is_partition_allocated() -> bool {
@@ -489,6 +501,7 @@ pub fn make_m_homogeneous_partition(
         n_sets_per_partition,
         n_indices_per_set,
         indices,
+        _marker: PhantomData,
     })
 }
 
@@ -535,6 +548,7 @@ pub fn make_plp_homogeneous_partition(
         n_sets_per_partition,
         n_indices_per_set,
         indices,
+        _marker: PhantomData,
     })
 }
 
@@ -629,6 +643,9 @@ impl SolveResult {
 ///
 /// Build with [`PolsysSolver::new`] (or [`PolsysSolver::default`]), tune via
 /// the builder methods, then call [`PolsysSolver::solve`].
+///
+/// This type is `!Send` and `!Sync` because the underlying Fortran library
+/// uses global state.
 #[derive(Clone, Copy, Debug)]
 pub struct PolsysSolver {
     /// Path-tracking tolerance for the homotopy-continuation phase.
@@ -648,6 +665,8 @@ pub struct PolsysSolver {
     /// leaves the RNG at its implementation-defined default; `Some(v)` seeds
     /// with `v` (broadcast across the seed array) before every solve.
     pub seed: Option<i32>,
+
+    _marker: PhantomData<*const ()>,
 }
 
 impl Default for PolsysSolver {
@@ -660,6 +679,7 @@ impl Default for PolsysSolver {
             recall: false,
             no_scaling: false,
             seed: None,
+            _marker: PhantomData,
         }
     }
 }
