@@ -554,6 +554,10 @@ pub struct PolsysSolver {
     pub recall: bool,
     /// Disable automatic scaling of the polynomial equations.
     pub no_scaling: bool,
+    /// Seed for the Fortran random-number generator.  `None` (the default)
+    /// leaves the RNG at its implementation-defined default; `Some(v)` seeds
+    /// with `v` (broadcast across the seed array) before every solve.
+    pub seed: Option<i32>,
 }
 
 impl Default for PolsysSolver {
@@ -565,6 +569,7 @@ impl Default for PolsysSolver {
             n_path_steps: 1,
             recall: false,
             no_scaling: false,
+            seed: None,
         }
     }
 }
@@ -608,6 +613,13 @@ impl PolsysSolver {
     /// Sets whether to disable automatic equation scaling.
     pub fn with_no_scaling(mut self, no_scaling: bool) -> Self {
         self.no_scaling = no_scaling;
+        self
+    }
+
+    /// Sets the RNG seed.  `None` leaves the Fortran default;
+    /// `Some(v)` broadcasts `v` across the seed array.
+    pub fn with_seed(mut self, seed: Option<i32>) -> Self {
+        self.seed = seed;
         self
     }
 
@@ -658,6 +670,7 @@ impl PolsysSolver {
                 self.recall as i32,
                 self.no_scaling as i32,
                 0,
+                self.seed.unwrap_or(-1),
             )
         }
 
@@ -1038,6 +1051,7 @@ mod tests {
         let result = PolsysSolver::new()
             .with_tracktol(1.0e-10)
             .with_finaltol(1.0e-12)
+            .with_seed(Some(32749))
             .solve_with_partition(&mut poly, &mut part)
             .unwrap();
 

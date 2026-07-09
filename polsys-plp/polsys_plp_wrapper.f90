@@ -336,7 +336,7 @@ contains
     subroutine polsys_plp_wrap(n, tracktol, finaltol, singtol, &
                                sspar, bplp, iflag1, iflag2, &
                                arclen, lambda, roots, nfe, scale_factors, &
-                               numrr, recall, no_scaling, user_f_df) bind(c)
+                               numrr, recall, no_scaling, user_f_df, seed) bind(c)
         ! routine arguments
         integer(c_int32_t), intent(in), value :: n
         real(c_double), intent(in), value:: tracktol
@@ -355,6 +355,7 @@ contains
         integer(c_int32_t), intent(in), value :: recall
         integer(c_int32_t), intent(in), value :: no_scaling
         integer(c_int32_t), intent(in), value :: user_f_df
+        integer(c_int32_t), intent(in), value :: seed
 
         ! local variables
         integer(c_int32_t) :: bplp_f
@@ -364,6 +365,8 @@ contains
         real(c_double), dimension(:), pointer :: lambda_f
         integer(c_int32_t), dimension(:), pointer :: nfe_f
         complex(c_double_complex), dimension(:, :), pointer :: roots_f
+        integer, allocatable :: rng_seed(:)
+        integer :: rng_n
 
         nullify (iflag2_f, arclen_f, lambda_f, nfe_f, roots_f)
 
@@ -387,6 +390,15 @@ contains
 
         singtol_f = singtol
         bplp_f = bplp
+
+        if (seed >= 0) then
+            call random_seed(size=rng_n)
+            if (allocated(rng_seed)) deallocate (rng_seed)
+            allocate (rng_seed(rng_n))
+            rng_seed = seed
+            call random_seed(put=rng_seed)
+            deallocate (rng_seed)
+        end if
 
         ! POLSYS_PLP uses OPTIONAL arguments whose presence (not value)
         ! changes behaviour, so we must only pass them when requested.

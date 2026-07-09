@@ -51,5 +51,6 @@ unsafe extern "C" {
         recall: i32,
         no_scaling: i32,
         user_f_df: i32,
+        seed: i32,
     );
 }
