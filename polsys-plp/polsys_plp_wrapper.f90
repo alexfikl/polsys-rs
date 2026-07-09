@@ -370,7 +370,7 @@ contains
         iflag1 = 0
         if (tracktol <= 0.0_c_double &
             .or. finaltol <= 0.0_c_double &
-            .or. singtol <= 0.0_c_double) then
+            .or. singtol < 0.0_c_double) then
             iflag1 = 106
             return
         end if
