@@ -3,68 +3,92 @@
 
 use num::complex::Complex64;
 use std::array;
-use std::fmt;
 use std::iter;
 
 use crate::bindings;
 
 // {{{ Errors
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, thiserror::Error)]
 pub enum PolsysError {
     /// Error flag returned from the Fortran library when there is no error. This
     /// should never be returned by the Rust wrappers in this library.
+    #[error("Finished successfully")]
     NoError = 0,
     /// Unknown error
+    #[error("Unknown error occurred")]
     UnknownError = 1024,
 
     /// Error in system routine attempting to do allocation.
+    #[error("Error in system routine attempting to do allocation")]
     AllocateSystemFailed = 1,
     /// An invalid data object has been specified for allocation.
+    #[error("An invalid data object has been specified for allocation")]
     AllocateInvalidObject = 2,
     /// Both system and object errors in allocation.
+    #[error("Failed to allocate invalid object")]
     AllocateFailed = 3,
     /// Error in system routine attempting to do deallocation.
+    #[error("Error in system routine attempting to do deallocation")]
     DeallocateSystemFailed = 4,
     /// An invalid data object has been specified for deallocation.
+    #[error("An invalid data object has been specified for deallocation")]
     DeallocateInvalidObject = 5,
     /// Both system and object errors in deallocation.
+    #[error("Failed to allocate invalid object")]
     DeallocateFailed = 6,
 
     /// Dimensions or setup of input polynomial and partition do not match.
+    #[error("Input polynomial and partitions dimensions or coefficient counts do not match")]
     PolynomialInvalid = -1,
     /// Terms with negative powers found in the polynomial.
+    #[error("Input polynomial has negative powers")]
     NegativePower = -2,
     /// One of the equations in the system is a constant.
+    #[error("Constant equation (all degrees are zero)")]
     ConstantEquation = -3,
     /// Partition sizes do not add up to the number of equations.
+    #[error("Partition sizes do not match up to system size")]
     InconsistentPartitionSize = -4,
     /// A partition is defined more than once.
+    #[error("Repeated terms present in the partition")]
     RepeatedPartition = -5,
     /// Array sizes used for recall do not have valid sizes.
+    #[error("Recall is not consistent (BPLP differs)")]
     InconsistentRecall = -6,
     /// Number of scale factors does not match number of equations.
+    #[error("Less scale factors specified than system size")]
     InsufficientScaleFactors = -7,
 
     /// Input dimensions do not match.
+    #[error("Input dimensions do not match")]
     DimensionMismatch = 100,
     /// Polynomial is not allocated on calls.
+    #[error("Polynomial has not been initialized (call Polynomial::init)")]
     PolynomialNotAllocated = 101,
     /// Partition was not allocated
+    #[error("Partition has not been initialized (call Partition::init)")]
     PartitionNotAllocated = 102,
     /// The indices given in a partition does not match the number of variables.
+    #[error("Partition index count does not match system size")]
     PartitionInvalidIndexCount = 103,
     /// The indices given in a partition have incorrect values (not in 1 <= i <= n).
+    #[error("Partition contains incorrect indices (not in 1 <= i <= n)")]
     PartitionIncorrectIndex = 104,
     /// Number of coefficients does not match given coefficients per equation.
+    #[error("Number of coefficients does not match number of coefficients per equation")]
     PolynomialInvalidCoefficientCount = 105,
     /// Invalid tolerance given (e.g. < 0).
+    #[error("Invalid tolerance given (e.g. < 0)")]
     InvalidTolerance = 106,
     /// Invalid Bezout number (negative).
+    #[error("Bezout number if negative or otherwise invalid")]
     InvalidBezoutNumber = 107,
     /// Polynomial is already initialized.
+    #[error("Polynomial has already been initialized (cannot call init again)")]
     PolynomialDoubleInitialize = 108,
     /// Partition is already initialized.
+    #[error("Partition has already been initialized (cannot call init again)")]
     PartitionDoubleInitialize = 109,
 }
 
@@ -103,128 +127,38 @@ impl From<i32> for PolsysError {
     }
 }
 
-impl PolsysError {
-    fn as_str(&self) -> &'static str {
-        match *self {
-            PolsysError::NoError => "Finished successfully",
-            PolsysError::UnknownError => "Unknown error occurred",
-            // allocation
-            PolsysError::AllocateSystemFailed => {
-                "Error in system routine attempting to do allocation"
-            }
-            PolsysError::AllocateInvalidObject => {
-                "An invalid data object has been specified for allocation"
-            }
-            PolsysError::AllocateFailed => "Failed to allocate invalid object",
-            PolsysError::DeallocateSystemFailed => {
-                "Error in system routine attempting to do deallocation"
-            }
-            PolsysError::DeallocateInvalidObject => {
-                "An invalid data object has been specified for deallocation"
-            }
-            PolsysError::DeallocateFailed => "Failed to allocate invalid object",
-            PolsysError::InvalidTolerance => "Invalid tolerance given (e.g. < 0)",
-            // polsys_plp
-            PolsysError::PolynomialInvalid => {
-                "Input polynomial and partitions dimensions or coefficient counts do not match"
-            }
-            PolsysError::NegativePower => "Input polynomial has negative powers",
-            PolsysError::ConstantEquation => "Constant equation (all degrees are zero)",
-            PolsysError::InconsistentPartitionSize => {
-                "Partition sizes do not match up to system size"
-            }
-            PolsysError::RepeatedPartition => "Repeated terms present in the partition",
-            PolsysError::InconsistentRecall => "Recall is not consistent (BPLP differs)",
-            PolsysError::InsufficientScaleFactors => {
-                "Less scale factors specified than system size"
-            }
-            // custom
-            PolsysError::DimensionMismatch => "Input dimensions do not match",
-            PolsysError::PolynomialNotAllocated => {
-                "Polynomial has not been initialized (call Polynomial::init)"
-            }
-            PolsysError::PartitionNotAllocated => {
-                "Partition has not been initialized (call Partition::init)"
-            }
-            PolsysError::PolynomialInvalidCoefficientCount => {
-                "Number of coefficients does not match number of coefficients per equation"
-            }
-            PolsysError::PartitionInvalidIndexCount => {
-                "Partition index count does not match system size"
-            }
-            PolsysError::PartitionIncorrectIndex => {
-                "Partition contains incorrect indices (not in 1 <= i <= n)"
-            }
-            PolsysError::InvalidBezoutNumber => "Bezout number if negative or otherwise invalid",
-            PolsysError::PolynomialDoubleInitialize => {
-                "Polynomial has already been initialized (cannot call init again)"
-            }
-            PolsysError::PartitionDoubleInitialize => {
-                "Partition has already been initialized (cannot call init again)"
-            }
-        }
-    }
-}
-
-impl fmt::Display for PolsysError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str(self.as_str())
-    }
-}
-
-impl std::error::Error for PolsysError {}
-
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, thiserror::Error)]
 pub enum PathTrackingError {
     /// An unnknown flag returned by the routine.
+    #[error("An unknown error has occurred")]
     UnknownError = -1,
 
     /// Tracking tolerance was not met (should re-run with a higher tolerance).
+    #[error("The specified error tolerance could not be met (increase TRACKTOL)")]
     TrackingToleranceFailed = 2,
     /// Maximum number of steps allowed was exceeded.
+    #[error("The maximum number of steps allowed was exceeded (increase NUMRR)")]
     MaximumStepsExceeded = 3,
     /// Jacobian does not have full rank.
+    #[error(
+        "The Jacobian matrix does not have full rank (the zero curve of the homotopy map cannot be followed any further)"
+    )]
     BadJacobian = 4,
     /// The tracking algorithm has lost the zero curve of the homotopy map and
     /// is not making progress.
+    #[error(
+        "The zero curve of the homotopy has been lost and no progress can be made (TRACKTOL and FINALTOL may be too lenient)"
+    )]
     ZeroCurveLost = 5,
     /// Normal flow Newton iteration failed to converge.
+    #[error(
+        "The normal flow Newton iteration failed to converge (TRACKTOL or FINALTOL may be too stringent)"
+    )]
     NewtonConvergenceFailed = 6,
     /// Failed to find a root.
+    #[error("Failed to find a root in 10*NUMRR iterations")]
     RootSearchFailed = 7,
 }
-
-impl PathTrackingError {
-    fn as_str(&self) -> &'static str {
-        match *self {
-            PathTrackingError::UnknownError => "An unknown error has occurred",
-            PathTrackingError::TrackingToleranceFailed => {
-                "The specified error tolerance could not be met (increase TRACKTOL)"
-            }
-            PathTrackingError::MaximumStepsExceeded => {
-                "The maximum number of steps allowed was exceeded (increase NUMRR)"
-            }
-            PathTrackingError::BadJacobian => {
-                "The Jacobian matrix does not have full rank (the zero curve of the homotopy map cannot be followed any further)"
-            }
-            PathTrackingError::ZeroCurveLost => {
-                "The zero curve of the homotopy has been lost and no progress can be made (TRACKTOL and FINALTOL may be too lenient)"
-            }
-            PathTrackingError::NewtonConvergenceFailed => {
-                "The normal flow Newton iteration failed to converge (TRACKTOL or FINALTOL may be too stringent)"
-            }
-            PathTrackingError::RootSearchFailed => "Failed to find a root in 10*NUMRR iterations",
-        }
-    }
-}
-
-impl fmt::Display for PathTrackingError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str(self.as_str())
-    }
-}
-
-impl std::error::Error for PathTrackingError {}
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -763,8 +697,7 @@ mod tests {
     #[test]
     fn test_polsys_error_display() {
         let err = PolsysError::NoError;
-        assert_eq!(err.as_str(), "Finished successfully");
-        assert_eq!(format!("{err}"), "Finished successfully");
+        assert_eq!(err.to_string(), "Finished successfully");
     }
 
     #[test]
