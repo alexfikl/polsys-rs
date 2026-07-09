@@ -13,16 +13,14 @@ Example
 
 The following snippet solves a system of 4 polynomial equations in 4 complex
 unknowns:
-
-.. math::
-
-    \begin{cases}
-    x1^2 + x2 - 1 = 0,
-    x2^2 + x3 - 1 = 0,
-    x3^2 + x4 - 1 = 0,
-    x4^2 + x1 - 1 = 0,
-    \end{cases}
-
+$$
+\begin{cases}
+x1^2 + x2 - 1 = 0,
+x2^2 + x3 - 1 = 0,
+x3^2 + x4 - 1 = 0,
+x4^2 + x1 - 1 = 0,
+\end{cases}
+$$
 using the homotopy method and prints all the computed roots.
 
 .. code-block:: rust
