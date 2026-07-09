@@ -3,12 +3,16 @@ name = "polsys"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+system-lapack = []
+
 [dependencies]
 num = { "version" = "0.4" }
 thiserror = { "version" = "2" }
 
 [build-dependencies]
 cc = { "version" = "1.2" }
+pkg-config = { "version" = "0.3" }
 
 [package.metadata.typos.files]
 extend-exclude = [

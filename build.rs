@@ -2,12 +2,32 @@
 // SPDX-License-Identifier: MIT
 
 fn main() {
+    let mut files = vec![
+        "polsys-plp/polsys_plp.f90",
+        "polsys-plp/polsys_plp_wrapper.f90",
+    ];
+
+    let use_system_lapack = std::env::var("CARGO_FEATURE_SYSTEM_LAPACK").as_deref() == Ok("1");
+
+    if use_system_lapack {
+        if let Ok(libs) = std::env::var("POLSYS_LAPACK_LIBS") {
+            for lib in libs.split(',') {
+                println!("cargo::rustc-link-lib={lib}");
+            }
+        } else {
+            pkg_config::probe_library("lapack").unwrap_or_else(|e| {
+                panic!(
+                    "pkg-config could not find lapack ({e}). \
+                     Set POLSYS_LAPACK_LIBS=openblas (or lapack,blas, etc.)"
+                )
+            });
+        }
+    } else {
+        files.push("polsys-plp/lapack_plp.f");
+    }
+
     cc::Build::new()
-        .files([
-            "polsys-plp/polsys_plp.f90",
-            "polsys-plp/lapack_plp.f",
-            "polsys-plp/polsys_plp_wrapper.f90",
-        ])
+        .files(&files)
         .compiler("gfortran")
         // .flag("-std=legacy")
         .flag("-Wno-compare-reals")
