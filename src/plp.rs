@@ -389,6 +389,7 @@ impl<const N: usize> Drop for Polynomial<N> {
 
 // {{{ Partition
 
+#[derive(Clone, Debug)]
 pub struct Partition {
     pub n_sets_per_partition: Vec<i32>,
     pub n_indices_per_set: Vec<i32>,
@@ -561,6 +562,7 @@ pub fn bezout<const N: usize>(
 
 /// Outcome of a solve: the roots found, the per-path number of function
 /// evaluations, and the per-path tracking status.
+#[derive(Debug)]
 pub struct SolveResult {
     /// Number of affine variables in the solved system. Each root occupies
     /// `n_vars + 1` contiguous entries in [`SolveResult::roots`].
