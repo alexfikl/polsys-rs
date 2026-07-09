@@ -682,6 +682,27 @@ mod tests {
     use super::*;
     use num::complex::c64;
 
+    fn norm(a: &[Complex64], b: &[Complex64]) -> f64 {
+        a.iter()
+            .zip(b.iter())
+            .map(|(x, y)| (x - y).norm_sqr())
+            .sum::<f64>()
+            .sqrt()
+    }
+
+    fn assert_roots_contain(found: &[&[Complex64]], reference: &[Vec<Complex64>], tol: f64) {
+        for ref_root in reference {
+            let nearest = found
+                .iter()
+                .map(|r| norm(r, ref_root))
+                .fold(f64::INFINITY, f64::min);
+            assert!(
+                nearest < tol,
+                "reference root {ref_root:?}: no match within tol={tol} (nearest={nearest})",
+            );
+        }
+    }
+
     #[test]
     fn test_polysys_error_from_i32() {
         let err = PolsysError::from(0);
@@ -958,6 +979,105 @@ mod tests {
         for root in &affine {
             assert_eq!(root.len(), 2);
         }
+    }
+
+    /// Solves the 3-variable system:
+    /// ```text
+    ///     x^2 + y + z - 1 = 0
+    ///     x + y^2 + z - 1 = 0
+    ///     x + y + z^2 - 1 = 0
+    /// ```
+    /// which has five finite solutions in C:
+    ///     (1, 0, 0),
+    ///     (0, 1, 0),
+    ///     (0, 0, 1),
+    ///     (-1+sqrt(2), -1+sqrt(2), -1+sqrt(2))
+    ///     (-1-sqrt(2), -1-sqrt(2), -1-sqrt(2)).
+    ///
+    /// The roots (1, 0, 0), (0, 1, 0), and (0, 0, 1) are singular (Jacobian
+    /// determinant is zero), so homotopy paths converge poorly there.
+    ///
+    /// Reference: D. Cox, J. Little, and Donal O'Shea. Ideals, Varieties,
+    /// and Algorithms: An Introduction to Computational Algebraic Geometry and
+    /// Commutative Algebra. Springer Science & Business Media, 2013, p. 122.
+    #[test]
+    fn test_polsys_plp_cox_little_oshea_3vars() {
+        let mut poly = Polynomial::<3>::new(vec![
+            vec![
+                term([2, 0, 0], 1.0),
+                term([0, 1, 0], 1.0),
+                term([0, 0, 1], 1.0),
+                term([0, 0, 0], -1.0),
+            ],
+            vec![
+                term([1, 0, 0], 1.0),
+                term([0, 2, 0], 1.0),
+                term([0, 0, 1], 1.0),
+                term([0, 0, 0], -1.0),
+            ],
+            vec![
+                term([1, 0, 0], 1.0),
+                term([0, 1, 0], 1.0),
+                term([0, 0, 2], 1.0),
+                term([0, 0, 0], -1.0),
+            ],
+        ])
+        .unwrap();
+
+        // 1-homogeneous partition: Bezout number equals the total degree 2^3 = 8.
+        assert_eq!(poly.total_degree(), 8);
+
+        let mut part = make_homogeneous_partition(poly.len()).unwrap();
+
+        let result = PolsysSolver::new()
+            .with_tracktol(1.0e-10)
+            .with_finaltol(1.0e-12)
+            .solve_with_partition(&mut poly, &mut part)
+            .unwrap();
+
+        // Eight paths are tracked.
+        assert_eq!(result.n_roots(), 8);
+
+        let sqrt2 = 2.0f64.sqrt();
+        let found: Vec<&[Complex64]> = result.affine_roots().collect();
+
+        // Non-singular roots converge to high precision.
+        let non_singular: [Vec<Complex64>; 2] = [
+            vec![c64(-1.0 + sqrt2, 0.0); 3],
+            vec![c64(-1.0 - sqrt2, 0.0); 3],
+        ];
+        assert_roots_contain(&found, &non_singular, 1.0e-6);
+
+        // Singular roots (Jacobian is rank-deficient) converge slowly; verify
+        // they are at least approximately present among the tracked paths.
+        let singular: [Vec<Complex64>; 3] = [
+            vec![c64(1.0, 0.0), c64(0.0, 0.0), c64(0.0, 0.0)],
+            vec![c64(0.0, 0.0), c64(1.0, 0.0), c64(0.0, 0.0)],
+            vec![c64(0.0, 0.0), c64(0.0, 0.0), c64(1.0, 0.0)],
+        ];
+        assert_roots_contain(&found, &singular, 0.3);
+    }
+
+    #[test]
+    fn test_polsys_plp_univariate() {
+        let mut poly =
+            Polynomial::<1>::new(vec![vec![term([2], 1.0), term([1], -3.0), term([0], 2.0)]])
+                .unwrap();
+
+        assert_eq!(poly.total_degree(), 2);
+
+        let mut part = make_homogeneous_partition(poly.len()).unwrap();
+
+        let result = PolsysSolver::new()
+            .solve_with_partition(&mut poly, &mut part)
+            .unwrap();
+
+        assert_eq!(result.n_roots(), 2);
+
+        let found: Vec<&[Complex64]> = result.affine_roots().collect();
+        let reference = [vec![c64(1.0, 0.0)], vec![c64(2.0, 0.0)]];
+
+        assert_roots_contain(&found, &reference, 1.0e-6);
     }
 }
 
