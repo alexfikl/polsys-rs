@@ -565,6 +565,18 @@ pub fn bezout<const N: usize>(
 
 // {{{ Solve
 
+/// Outcome of a solve: the roots found, the per-path number of function
+/// evaluations, and the per-path tracking status.
+pub struct SolveResult {
+    /// Roots, one vector per path, each of length `n + 1` (the final entry is
+    /// the homogenizing/projective coordinate).
+    pub roots: Vec<Vec<Complex64>>,
+    /// Number of function evaluations along each tracked path.
+    pub nfe: Vec<i32>,
+    /// Tracking status for each path.
+    pub path_status: Vec<PathTrackingResult>,
+}
+
 /// Configurable driver for solving a polynomial system by globally convergent
 /// homotopy continuation. Build with [`PolsysSolver::new`] (or
 /// [`PolsysSolver::default`]), tune via the builder methods, then call
@@ -705,25 +717,6 @@ impl PolsysSolver {
         } else {
             Err(PolsysError::from(iflag1))
         }
-    }
-}
-
-/// Outcome of a solve: the roots found, the per-path number of function
-/// evaluations, and the per-path tracking status.
-pub struct SolveResult {
-    /// Roots, one vector per path, each of length `n + 1` (the final entry is
-    /// the homogenizing/projective coordinate).
-    pub roots: Vec<Vec<Complex64>>,
-    /// Number of function evaluations along each tracked path.
-    pub nfe: Vec<i32>,
-    /// Tracking status for each path.
-    pub path_status: Vec<PathTrackingResult>,
-}
-
-impl SolveResult {
-    /// Refines the roots found by a previous solve.
-    pub fn refine(&mut self) -> Result<&mut Self, PolsysError> {
-        todo!("refine is not implemented")
     }
 }
 
