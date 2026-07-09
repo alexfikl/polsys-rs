@@ -11,6 +11,7 @@ format: rustfmt fprettify justfmt
 [doc("Run rustfmt over all Rust source code")]
 rustfmt:
     cargo fmt -- src/*.rs
+    cargo fmt -- examples/*.rs
     cargo fmt -- build.rs
     @echo -e "\e[1;32mrustfmt clean!\e[0m"
 
