@@ -1,6 +1,6 @@
 [package]
 name = "polsys"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Alexandru Fikl <alexfikl@gmail.com>"]
 edition = "2024"
 description = "Rust bindings for the POLSYS_PLP Fortran library that solves polynomial systems"
