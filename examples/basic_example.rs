@@ -3,7 +3,7 @@
 
 use polsys::{PolsysSolver, Polynomial, term};
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // A system of 4 polynomial equations in 4 complex unknowns.
     //
     //     f1(x) = x1^2 + x2      - 1
@@ -34,14 +34,15 @@ fn main() {
             term([1, 0, 0, 0], 1.0),
             term([0, 0, 0, 0], -1.0),
         ],
-    ])
-    .unwrap();
+    ])?;
 
     // Solve the system using a globally convergent homotopy.
-    let result = PolsysSolver::new().solve(&mut poly).unwrap();
+    let result = PolsysSolver::new().solve(&mut poly)?;
 
     println!("Found {} roots:", result.roots.len());
-    for (i, root) in result.roots.iter().enumerate() {
-        println!("{i:2}: {:?}", &root[..poly.len()]);
+    for (i, root) in result.affine_roots().enumerate() {
+        println!("{i:2}: {root:?}");
     }
+
+    Ok(())
 }

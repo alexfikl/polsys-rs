@@ -24,55 +24,47 @@ x_4^2 + x_1 - 1 = 0,
 using the homotopy method and prints all the computed roots.
 
 ```rust
-use num::complex::Complex64;
+use polsys::{Polynomial, PolsysSolver, term};
 
-use polsys::{Polynomial, SolveState, make_homogeneous_partition};
-
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Each equation is given as a list of (degree_tuple, coefficient) pairs,
     // where the degree tuple holds the exponents of (x1, x2, x3, x4).
     let mut poly = Polynomial::<4>::new(vec![
         vec![
-            ([2, 0, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 1, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([2, 0, 0, 0], 1.0),
+            term([0, 1, 0, 0], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
         vec![
-            ([0, 2, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 1, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([0, 2, 0, 0], 1.0),
+            term([0, 0, 1, 0], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
         vec![
-            ([0, 0, 2, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 1], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([0, 0, 2, 0], 1.0),
+            term([0, 0, 0, 1], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
         vec![
-            ([0, 0, 0, 2], Complex64::new(1.0, 0.0)),
-            ([1, 0, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([0, 0, 0, 2], 1.0),
+            term([1, 0, 0, 0], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
-    ])
-    .unwrap();
-
-    // Use a standard (1-homogeneous) partition of the variables.
-    let mut part = make_homogeneous_partition(poly.len()).unwrap();
+    ])?;
 
     // Solve with a globally convergent homotopy.
-    let result = SolveState::solve(
-        &mut poly, &mut part,
-        1.0e-8, 1.0e-8, 1.0e-8, 1, false, false,
-    )
-    .unwrap();
+    let result = PolsysSolver::new().solve(&mut poly)?;
 
     println!("Found {} roots:", result.roots.len());
-    for (i, root) in result.roots.iter().enumerate() {
-        println!("{i:2}: {:?}", &root[..poly.len()]);
+    for (i, root) in result.affine_roots().enumerate() {
+        println!("{i:2}: {root:?}");
     }
+
+    Ok(())
 }
 ```
 
-A runnable version of this example lives in `examples/solve_4d.rs`.
+A runnable version of this example lives in `examples/basic_example.rs`.
 
 ## Development
 
