@@ -1,6 +1,8 @@
 # POLSYS-RS
 
 [![Build Status](https://github.com/alexfikl/polsys-rs/workflows/CI/badge.svg)](https://github.com/alexfikl/polsys-rs/actions?query=branch%3Amain+workflow%3ACI)
+[![crates.io](https://img.shields.io/crates/v/polsys)](https://crates.io/crates/polsys)
+[![docs.rs](https://img.shields.io/docsrs/polsys?label=docs.rs&color=%23F58042)](https://docs.rs/polsys/latest/polsys/)
 
 This crate provides a Rust wrapper around the `POLSYS_PLP` Fortran library
 by Wise, Sommese, and Watson in their [ACM paper](https://doi.org/10.1145/347837.347885).
