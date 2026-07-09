@@ -75,6 +75,7 @@ A runnable version of this example lives in `examples/basic_example.rs`.
 ### Links
 
 - [Code](https://github.com/alexfikl/polsys-rs).
+- [Documentation](https://docs.rs/polsys/latest/polsys/).
 
 Other known libraries that may do a better job if they had Rust bindings:
 
