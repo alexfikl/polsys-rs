@@ -49,7 +49,7 @@ fortitude:
 
 [doc("Run clippy lint checks (Rust)")]
 clippy:
-    cargo clippy --all-targets --all-features
+    cargo clippy --all-targets
     @echo -e "\e[1;32m[rust] clippy clean!\e[0m"
 
 # }}}
@@ -61,15 +61,15 @@ pin:
 
 [doc("Build project in debug mode")]
 debug:
-    cargo build --locked --all-features --verbose
+    cargo build --locked --verbose
 
 [doc("Build project in release mode")]
 release:
-    cargo build --locked --all-features --release
+    cargo build --locked --release
 
 [doc("Run rust tests")]
 test $RUST_BACKTRACE="1":
-    cargo test --all-features -- --test-threads 1
+    cargo test -- --test-threads 1
 
 [doc("Remove various generated files")]
 clean:
