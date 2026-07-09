@@ -395,23 +395,25 @@ contains
                             sspar, bplp_f, iflag1, iflag2_f, &
                             arclen_f, lambda_f, roots_f, nfe_f, &
                             scale_factors, numrr, &
-                            .true., .true., .true.)
+                            RECALL=.true., NO_SCALING=.true., USER_F_DF=.true.)
         else if (recall == 1 .and. no_scaling == 1) then
             call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
                             sspar, bplp_f, iflag1, iflag2_f, &
                             arclen_f, lambda_f, roots_f, nfe_f, &
-                            scale_factors, numrr, .true., .true.)
+                            scale_factors, numrr, &
+                            RECALL=.true., NO_SCALING=.true.)
         else if (recall == 1 .and. user_f_df == 1) then
             call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
                             sspar, bplp_f, iflag1, iflag2_f, &
                             arclen_f, lambda_f, roots_f, nfe_f, &
                             scale_factors, numrr, &
-                            .true., USER_F_DF=.true.)
+                            RECALL=.true., USER_F_DF=.true.)
         else if (recall == 1) then
             call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
                             sspar, bplp_f, iflag1, iflag2_f, &
                             arclen_f, lambda_f, roots_f, nfe_f, &
-                            scale_factors, numrr, .true.)
+                            scale_factors, numrr, &
+                            RECALL=.true.)
         else if (no_scaling == 1 .and. user_f_df == 1) then
             call POLSYS_PLP(n, tracktol, finaltol, singtol_f, &
                             sspar, bplp_f, iflag1, iflag2_f, &
