@@ -259,6 +259,7 @@ impl From<i32> for PathTrackingResult {
 pub struct Polynomial<const N: usize> {
     /// A full description of the polynomial system as a vector of equations,
     /// where each equation is a vector of (degree tuple, coefficient) pairs.
+    /// These can most easily be constructed using `term`.
     system: Vec<Vec<([i32; N], Complex64)>>,
 
     /// Number of coefficients per equation. This can be used to slice into the
@@ -285,6 +286,11 @@ fn deallocate_polynomial() -> i32 {
     unsafe { bindings::deallocate_polynomial(&mut ierr) };
 
     ierr
+}
+
+/// Builds a polynomial term from a degree tuple and a coefficient.
+pub fn term<const N: usize>(deg: [i32; N], coeff: impl Into<Complex64>) -> ([i32; N], Complex64) {
+    (deg, coeff.into())
 }
 
 impl<const N: usize> Polynomial<N> {

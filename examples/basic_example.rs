@@ -1,9 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use num::complex::Complex64;
-
-use polsys::{Polynomial, SolveState, make_homogeneous_partition};
+use polsys::{Polynomial, SolveState, make_homogeneous_partition, term};
 
 fn main() {
     // A system of 4 polynomial equations in 4 complex unknowns.
@@ -17,24 +15,24 @@ fn main() {
     // where the degree tuple holds the exponents of (x1, x2, x3, x4).
     let mut poly = Polynomial::<4>::new(vec![
         vec![
-            ([2, 0, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 1, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([2, 0, 0, 0], 1.0),
+            term([0, 1, 0, 0], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
         vec![
-            ([0, 2, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 1, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([0, 2, 0, 0], 1.0),
+            term([0, 0, 1, 0], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
         vec![
-            ([0, 0, 2, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 1], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([0, 0, 2, 0], 1.0),
+            term([0, 0, 0, 1], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
         vec![
-            ([0, 0, 0, 2], Complex64::new(1.0, 0.0)),
-            ([1, 0, 0, 0], Complex64::new(1.0, 0.0)),
-            ([0, 0, 0, 0], Complex64::new(-1.0, 0.0)),
+            term([0, 0, 0, 2], 1.0),
+            term([1, 0, 0, 0], 1.0),
+            term([0, 0, 0, 0], -1.0),
         ],
     ])
     .unwrap();
