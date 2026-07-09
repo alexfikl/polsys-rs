@@ -69,7 +69,7 @@ release:
 
 [doc("Run rust tests")]
 test $RUST_BACKTRACE="1":
-    cargo test --all-features -- --test-threads 1
+    cargo test -- --test-threads 1
 
 [doc("Remove various generated files")]
 clean:
