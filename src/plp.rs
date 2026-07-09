@@ -568,13 +568,25 @@ pub fn bezout<const N: usize>(
 /// Outcome of a solve: the roots found, the per-path number of function
 /// evaluations, and the per-path tracking status.
 pub struct SolveResult {
-    /// Roots, one vector per path, each of length `n + 1` (the final entry is
-    /// the homogenizing/projective coordinate).
+    /// Number of affine variables in the solved system. Each root vector has
+    /// length `n_vars + 1` (the extra entry is the homogenizing coordinate).
+    pub n_vars: usize,
+    /// Roots, one vector per path, each of length `n_vars + 1`.
     pub roots: Vec<Vec<Complex64>>,
     /// Number of function evaluations along each tracked path.
     pub nfe: Vec<i32>,
     /// Tracking status for each path.
     pub path_status: Vec<PathTrackingResult>,
+}
+
+impl SolveResult {
+    /// Iterates over the affine part of each root: the first `n_vars`
+    /// coordinates of every root, dropping the trailing homogenizing
+    /// coordinate. Each slice borrows from [`SolveResult::roots`] directly, so
+    /// no allocation is performed.
+    pub fn affine_roots(&self) -> impl Iterator<Item = &[Complex64]> {
+        self.roots.iter().map(move |r| &r[..self.n_vars])
+    }
 }
 
 /// Configurable driver for solving a polynomial system by globally convergent
@@ -710,6 +722,7 @@ impl PolsysSolver {
                 .collect();
 
             Ok(SolveResult {
+                n_vars: n,
                 roots: roots.chunks(n + 1).map(|r| r.to_vec()).collect(),
                 nfe,
                 path_status,
@@ -997,6 +1010,13 @@ mod tests {
         assert_eq!(result.roots.len(), 4);
         for root in &result.roots {
             assert_eq!(root.len(), 3);
+        }
+
+        assert_eq!(result.n_vars, 2);
+        let affine: Vec<_> = result.affine_roots().collect();
+        assert_eq!(affine.len(), 4);
+        for root in &affine {
+            assert_eq!(root.len(), 2);
         }
     }
 }
