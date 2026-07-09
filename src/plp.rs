@@ -349,23 +349,23 @@ impl<const N: usize> Polynomial<N> {
         }
     }
 
-    pub fn degrees(&self) -> Vec<i32> {
-        self.n_coeffs_per_eq
-            .iter()
-            .scan(0, |start, &m| {
-                let from = *start as usize;
-                let to = (*start + m) as usize;
-                *start = to as i32;
+    pub fn degrees(&self) -> [i32; N] {
+        let mut result = [0i32; N];
+        let mut start = 0usize;
 
-                Some(
-                    self.degrees[(N * from)..(N * to)]
-                        .chunks(N)
-                        .map(|chunk| chunk.iter().sum())
-                        .max(),
-                )
-            })
-            .map(|d| d.unwrap())
-            .collect()
+        for (i, &m) in self.n_coeffs_per_eq.iter().enumerate() {
+            let m = m as usize;
+            let from = N * start;
+            let to = N * (start + m);
+            result[i] = self.degrees[from..to]
+                .chunks(N)
+                .map(|chunk| chunk.iter().sum())
+                .max()
+                .unwrap_or(0);
+            start += m;
+        }
+
+        result
     }
 
     pub fn total_degree(&self) -> i32 {
