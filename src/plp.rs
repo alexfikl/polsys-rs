@@ -629,7 +629,7 @@ impl SolveState {
     }
 
     pub fn refine(&mut self) -> Result<&mut Self, PolsysError> {
-        Err(PolsysError::NoError)
+        todo!("refine is not implemented")
     }
 }
 
