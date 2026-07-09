@@ -26,9 +26,12 @@ fn main() {
         files.push("polsys-plp/lapack_plp.f");
     }
 
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+
     cc::Build::new()
         .files(&files)
         .compiler("gfortran")
+        .flag(format!("-J{out_dir}"))
         // .flag("-std=legacy")
         .flag("-Wno-compare-reals")
         .flag("-Wno-do-subscript")
