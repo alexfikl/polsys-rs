@@ -1342,6 +1342,8 @@ H_SAVE = HOLD
 S_SAVE = S - HOLD
 YS(:,1) = YOLD ; YS(:,2) = YPOLD
 
+ITER = 0
+
 ! If Y(1) >= 1 or if YP(1) <= 0 back up to YOLD and generate another point.
 
 REFINE_Y: DO
