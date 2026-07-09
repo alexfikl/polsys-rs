@@ -636,37 +636,37 @@ impl PolsysSolver {
     }
 
     /// Sets the path-tracking tolerance.
-    pub fn tracktol(mut self, tracktol: f64) -> Self {
+    pub fn with_tracktol(mut self, tracktol: f64) -> Self {
         self.tracktol = tracktol;
         self
     }
 
     /// Sets the root-acceptance tolerance.
-    pub fn finaltol(mut self, finaltol: f64) -> Self {
+    pub fn with_finaltol(mut self, finaltol: f64) -> Self {
         self.finaltol = finaltol;
         self
     }
 
     /// Sets the singularity-detection tolerance.
-    pub fn singtol(mut self, singtol: f64) -> Self {
+    pub fn with_singtol(mut self, singtol: f64) -> Self {
         self.singtol = singtol;
         self
     }
 
     /// Sets the number of restarts attempted on path failure.
-    pub fn n_path_steps(mut self, n_path_steps: i32) -> Self {
+    pub fn with_n_path_steps(mut self, n_path_steps: i32) -> Self {
         self.n_path_steps = n_path_steps;
         self
     }
 
     /// Sets whether to reuse path data from a previous solve.
-    pub fn recall(mut self, recall: bool) -> Self {
+    pub fn with_recall(mut self, recall: bool) -> Self {
         self.recall = recall;
         self
     }
 
     /// Sets whether to disable automatic equation scaling.
-    pub fn no_scaling(mut self, no_scaling: bool) -> Self {
+    pub fn with_no_scaling(mut self, no_scaling: bool) -> Self {
         self.no_scaling = no_scaling;
         self
     }
