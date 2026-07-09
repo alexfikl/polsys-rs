@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use polsys::{Polynomial, SolveState, make_homogeneous_partition, term};
+use polsys::{PolsysSolver, Polynomial, make_homogeneous_partition, term};
 
 fn main() {
     // A system of 4 polynomial equations in 4 complex unknowns.
@@ -41,10 +41,9 @@ fn main() {
     let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
     // Solve the system using a globally convergent homotopy.
-    let result = SolveState::solve(
-        &mut poly, &mut part, 1.0e-8, 1.0e-8, 1.0e-8, 1, false, false,
-    )
-    .unwrap();
+    let result = PolsysSolver::new()
+        .solve_with_partition(&mut poly, &mut part)
+        .unwrap();
 
     println!("Found {} roots:", result.roots.len());
     for (i, root) in result.roots.iter().enumerate() {

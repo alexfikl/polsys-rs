@@ -565,25 +565,98 @@ pub fn bezout<const N: usize>(
 
 // {{{ Solve
 
-pub struct SolveState {
-    pub roots: Vec<Vec<Complex64>>,
-    pub nfe: Vec<i32>,
-    pub path_status: Vec<PathTrackingResult>,
+/// Configurable driver for solving a polynomial system by globally convergent
+/// homotopy continuation. Build with [`PolsysSolver::new`] (or
+/// [`PolsysSolver::default`]), tune via the builder methods, then call
+/// [`PolsysSolver::solve`].
+#[derive(Clone, Copy, Debug)]
+pub struct PolsysSolver {
+    /// Path-tracking tolerance for the homotopy-continuation phase.
+    pub tracktol: f64,
+    /// Tolerance for accepting a root at the end of a tracked path.
+    pub finaltol: f64,
+    /// Tolerance for detecting singular or ill-conditioned roots.
+    pub singtol: f64,
+    /// Number of restarts attempted when a path fails to converge (the Fortran
+    /// routine's `NUMRR` argument).
+    pub n_path_steps: i32,
+    /// Reuse the path data produced by a previous solve.
+    pub recall: bool,
+    /// Disable automatic scaling of the polynomial equations.
+    pub no_scaling: bool,
 }
 
-impl SolveState {
-    #[allow(clippy::too_many_arguments)]
+impl Default for PolsysSolver {
+    fn default() -> Self {
+        Self {
+            tracktol: 1.0e-8,
+            finaltol: 1.0e-8,
+            singtol: 1.0e-8,
+            n_path_steps: 1,
+            recall: false,
+            no_scaling: false,
+        }
+    }
+}
+
+impl PolsysSolver {
+    /// Creates a new solver with default settings.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the path-tracking tolerance.
+    pub fn tracktol(mut self, tracktol: f64) -> Self {
+        self.tracktol = tracktol;
+        self
+    }
+
+    /// Sets the root-acceptance tolerance.
+    pub fn finaltol(mut self, finaltol: f64) -> Self {
+        self.finaltol = finaltol;
+        self
+    }
+
+    /// Sets the singularity-detection tolerance.
+    pub fn singtol(mut self, singtol: f64) -> Self {
+        self.singtol = singtol;
+        self
+    }
+
+    /// Sets the number of restarts attempted on path failure.
+    pub fn n_path_steps(mut self, n_path_steps: i32) -> Self {
+        self.n_path_steps = n_path_steps;
+        self
+    }
+
+    /// Sets whether to reuse path data from a previous solve.
+    pub fn recall(mut self, recall: bool) -> Self {
+        self.recall = recall;
+        self
+    }
+
+    /// Sets whether to disable automatic equation scaling.
+    pub fn no_scaling(mut self, no_scaling: bool) -> Self {
+        self.no_scaling = no_scaling;
+        self
+    }
+
+    /// Solves the system using the default 1-homogeneous partition.
     pub fn solve<const N: usize>(
+        &self,
+        poly: &mut Polynomial<N>,
+    ) -> Result<SolveResult, PolsysError> {
+        let mut part = make_homogeneous_partition(poly.len())?;
+        self.solve_with_partition(poly, &mut part)
+    }
+
+    /// Solves the system using an explicit variable partition.
+    pub fn solve_with_partition<const N: usize>(
+        &self,
         poly: &mut Polynomial<N>,
         part: &mut Partition,
-        tracktol: f64,
-        finaltol: f64,
-        singtol: f64,
-        n_path_steps: i32,
-        recall: bool,
-        no_scaling: bool,
-    ) -> Result<SolveState, PolsysError> {
-        let bplp = bezout(poly, part, tracktol)?;
+    ) -> Result<SolveResult, PolsysError> {
+        let bplp = bezout(poly, part, self.tracktol)?;
 
         let n = poly.len();
         let mut iflag1: i32 = 0;
@@ -599,9 +672,9 @@ impl SolveState {
         unsafe {
             bindings::polsys_plp_wrap(
                 n as i32,
-                tracktol,
-                finaltol,
-                singtol,
+                self.tracktol,
+                self.finaltol,
+                self.singtol,
                 sspar.as_mut_ptr(),
                 bplp as i32,
                 &mut iflag1,
@@ -611,9 +684,9 @@ impl SolveState {
                 roots.as_mut_ptr(),
                 nfe.as_mut_ptr(),
                 scale_factors.as_mut_ptr(),
-                n_path_steps,
-                recall as i32,
-                no_scaling as i32,
+                self.n_path_steps,
+                self.recall as i32,
+                self.no_scaling as i32,
                 0,
             )
         }
@@ -624,7 +697,7 @@ impl SolveState {
                 .map(|iflag| PathTrackingResult::from(*iflag))
                 .collect();
 
-            Ok(SolveState {
+            Ok(SolveResult {
                 roots: roots.chunks(n + 1).map(|r| r.to_vec()).collect(),
                 nfe,
                 path_status,
@@ -633,7 +706,22 @@ impl SolveState {
             Err(PolsysError::from(iflag1))
         }
     }
+}
 
+/// Outcome of a solve: the roots found, the per-path number of function
+/// evaluations, and the per-path tracking status.
+pub struct SolveResult {
+    /// Roots, one vector per path, each of length `n + 1` (the final entry is
+    /// the homogenizing/projective coordinate).
+    pub roots: Vec<Vec<Complex64>>,
+    /// Number of function evaluations along each tracked path.
+    pub nfe: Vec<i32>,
+    /// Tracking status for each path.
+    pub path_status: Vec<PathTrackingResult>,
+}
+
+impl SolveResult {
+    /// Refines the roots found by a previous solve.
     pub fn refine(&mut self) -> Result<&mut Self, PolsysError> {
         todo!("refine is not implemented")
     }
@@ -879,10 +967,9 @@ mod tests {
         .unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
-        let result = SolveState::solve(
-            &mut poly, &mut part, 1.0e-8, 1.0e-8, 1.0e-8, 1, false, false,
-        )
-        .unwrap();
+        let result = PolsysSolver::new()
+            .solve_with_partition(&mut poly, &mut part)
+            .unwrap();
 
         for i in 0..result.roots.len() {
             println!("Root {}: {:?}", i, result.roots[i]);
@@ -910,10 +997,9 @@ mod tests {
         .unwrap();
         let mut part = make_homogeneous_partition(poly.len()).unwrap();
 
-        let result = SolveState::solve(
-            &mut poly, &mut part, 1.0e-8, 1.0e-8, 1.0e-8, 1, false, false,
-        )
-        .unwrap();
+        let result = PolsysSolver::new()
+            .solve_with_partition(&mut poly, &mut part)
+            .unwrap();
 
         assert_eq!(result.roots.len(), 4);
         for root in &result.roots {
