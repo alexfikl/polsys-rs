@@ -364,6 +364,11 @@ impl<const N: usize> Drop for Polynomial<N> {
 
 // {{{ Partition
 
+/// A variable partition for the PLP homotopy formulation.
+///
+/// The partition groups variables into sets per equation.  Use
+/// [`make_homogeneous_partition`], [`make_m_homogeneous_partition`], or
+/// [`make_plp_homogeneous_partition`] to construct one.
 #[derive(Clone, Debug)]
 pub struct Partition {
     pub n_sets_per_partition: Vec<i32>,
@@ -387,6 +392,13 @@ fn deallocate_partition() -> i32 {
 }
 
 impl Partition {
+    /// Initialises the underlying Fortran library with this partition.
+    ///
+    /// Like [`Polynomial::init`], this is usually called automatically by
+    /// [`bezout`] and [`PolsysSolver::solve_with_partition`].
+    ///
+    /// Returns [`PolsysError::PartitionDoubleInitialize`] if a partition
+    /// is already initialised.
     pub fn init(&mut self) -> Result<&mut Self, PolsysError> {
         if is_partition_allocated() {
             return Err(PolsysError::PartitionDoubleInitialize);
@@ -423,15 +435,27 @@ impl Partition {
         }
     }
 
+    /// Number of partition components (should equal `N`).
     pub fn len(&self) -> usize {
         self.n_sets_per_partition.len()
     }
 
+    /// Returns `true` if the partition has no components.
     pub fn is_empty(&self) -> bool {
         self.n_sets_per_partition.is_empty()
     }
 }
 
+/// Builds an m-homogeneous partition.
+///
+/// `n` is the number of variables and `part` is a list of sets (each set
+/// is a list of variable indices, 1-based).  The same sets are replicated
+/// for every equation in the system.
+///
+/// Returns [`PolsysError::PartitionInvalidIndexCount`] if the total
+/// number of indices across all sets does not equal `n`, or
+/// [`PolsysError::PartitionIncorrectIndex`] if any index is not in
+/// `1..=n`.
 pub fn make_m_homogeneous_partition(
     n: usize,
     part: Vec<Vec<u32>>,
@@ -469,10 +493,24 @@ impl Drop for Partition {
     }
 }
 
+/// Builds a 1-homogeneous partition (all variables in a single set).
+///
+/// Equivalent to `make_m_homogeneous_partition(n, vec![1..n])`.
 pub fn make_homogeneous_partition(n: usize) -> Result<Partition, PolsysError> {
     make_m_homogeneous_partition(n, vec![(1..(n as u32) + 1).collect()])
 }
 
+/// Builds a PLP (partitioned linear product) partition.
+///
+/// `n` is the number of variables and `part` has one entry per equation.
+/// Each entry is itself a list of sets, and each set is a list of
+/// variable indices (1-based).
+///
+/// Unlike [`make_m_homogeneous_partition`], this allows each equation to
+/// have a different partition structure.
+///
+/// Returns [`PolsysError::PartitionInvalidIndexCount`] if
+/// `part.len() != n`.
 pub fn make_plp_homogeneous_partition(
     n: usize,
     part: Vec<Vec<Vec<u32>>>,
@@ -499,6 +537,15 @@ pub fn make_plp_homogeneous_partition(
 
 // {{{ Bezout
 
+/// Computes the generalised Bezout number for the given partition.
+///
+/// The Bezout number equals the number of homotopy paths that will be
+/// tracked during the solve.  For a 1-homogeneous partition it is the
+/// product of the per-equation degrees (see [`Polynomial::total_degree`]).
+///
+/// Calls [`Polynomial::init`] and [`Partition::init`] as needed.
+///
+/// Returns [`PolsysError::InvalidBezoutNumber`] if the result is negative.
 pub fn bezout<const N: usize>(
     poly: &mut Polynomial<N>,
     part: &mut Partition,
