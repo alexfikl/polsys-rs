@@ -44,6 +44,7 @@ jobs:
     - uses: actions/checkout@v7
     - uses: extractions/setup-just@v4
     - run: |
+        export CARGO_FEATURE_SYSTEM_LAPACK=0
         just clippy
 
   test:
@@ -58,6 +59,7 @@ jobs:
     - uses: extractions/setup-just@v4
     - uses: Swatinem/rust-cache@v2
     - run: |
+        export CARGO_FEATURE_SYSTEM_LAPACK=0
         just test
 
 # vim: set ts=2 sw=2 et:
