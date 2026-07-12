@@ -135,9 +135,10 @@ def generate_rust(
     description: str = "",
 ) -> str:
     from sympy.printing.rust import RustCodePrinter
-    stringify = RustCodePrinter().doprint
 
+    stringify = RustCodePrinter().doprint
     equations = []
+
     for idx, terms in enumerate(terms_per_eq):
         result = []
         for degrees, coeffs in terms:
