@@ -178,6 +178,22 @@ def main(
     with open(filename, "w") as f:
         f.write(rust_source)
 
+    log.info("Written generated code: '%s'.", filename)
+    import subprocess
+
+    try:
+        subprocess.run(
+            ["cargo", "fmt", "--", str(filename)],
+            capture_output=True,
+            check=True,
+        )
+        log.info("Formatted generated code (`cargo fmt`): '%s'", filename)
+    except subprocess.SubprocessError as exc:
+        log.warning("[cargo fmt] %s", exc.stderr.decode())
+        return 1
+
+    return 0
+
 
 if __name__ == "__main__":
     import argparse
@@ -211,6 +227,15 @@ if __name__ == "__main__":
         action="store_true",
         help="force overwrite of existing files",
     )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Only show error messages",
+    )
     args = parser.parse_args()
+
+    if not args.quiet:
+        log.setLevel(logging.INFO)
 
     raise SystemExit(main(args.outfile, k=args.period, overwrite=args.force))
