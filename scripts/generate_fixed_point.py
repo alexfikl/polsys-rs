@@ -48,7 +48,7 @@ def build_system(
 
     def f(vec: sp.Matrix) -> sp.Matrix:
         y = A * vec
-        return sp.Matrix([yi**2 for yi in y]) + c * ones
+        return sp.Matrix([yi * yi for yi in y]) + c * ones
 
     current = z
     for _ in range(k):
@@ -66,7 +66,7 @@ def build_system(
 def extract_terms(
     poly_expr: sp.Expr,
     z: tuple[sp.Symbol, ...],
-) -> list[tuple[tuple[int, ...], complex]]:
+) -> list[tuple[tuple[int, ...], sp.Expr]]:
     d = len(z)
     poly = sp.Poly(poly_expr, *z)
 
@@ -83,6 +83,7 @@ def extract_terms(
 
 
 # {{{ generate_rust
+
 
 # REUSE-IgnoreStart
 RUST_CODE_TEMPLATE = """\
@@ -124,12 +125,15 @@ def generate_rust(
     *,
     description: str = "",
 ) -> str:
+    from sympy.printing.rust import RustCodePrinter
+    stringify = RustCodePrinter().doprint
+
     equations = []
     for idx, terms in enumerate(terms_per_eq):
         result = []
         for degrees, coeffs in terms:
             s_degrees = ", ".join(str(deg) for deg in degrees)
-            s_coeff = str(coeffs)
+            s_coeff = stringify(coeffs)
             result.append(f"term([{s_degrees}], {s_coeff})")
 
         eq = ", ".join(result)
