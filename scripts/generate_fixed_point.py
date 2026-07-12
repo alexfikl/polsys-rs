@@ -106,9 +106,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
     let result = PolsysSolver::new().solve(&mut poly)?;
 
     println!("Found {{}} roots:", result.n_roots());
+    let mut all_inside = true;
     for (i, root) in result.affine_roots().enumerate() {{
+        let norm = root.iter().map(|z| z.norm()).sum::<f64>().sqrt();
         println!("{{i:2}}: {{root:?}}");
+        if norm >= 1.0 {{
+            all_inside = false;
+        }}
     }}
+    println!(
+        "[ROOTS] |z| < 1: {{}}",
+        if all_inside {{ "YES" }} else {{ "NO" }},
+    );
 
     Ok(())
 }}
