@@ -73,12 +73,8 @@ def extract_terms(
     terms: list[tuple[tuple[int, ...], sp.Expr]] = []
     for monom, coeff in poly.terms():
         assert len(monom) == d
-
         exponent_tuple = tuple(int(e) for e in monom)
-        if isinstance(coeff, sp.Number):
-            coeff = coeff.evalf()
-
-        terms.append((exponent_tuple, coeff))
+        terms.append((exponent_tuple, coeff.evalf()))
 
     return terms
 
