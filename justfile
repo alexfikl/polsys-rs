@@ -6,7 +6,7 @@ _default:
 # {{{ formatting
 
 [doc("Reformat all source code")]
-format: rustfmt fprettify justfmt
+format: rustfmt fprettify ruffmt justfmt
 
 [doc("Run rustfmt over all Rust source code")]
 rustfmt:
@@ -21,6 +21,13 @@ fprettify:
         polsys-plp/polsys_plp_wrapper.f90
     @echo -e "\e[1;32mfprettify clean!\e[0m"
 
+[doc('Run ruff format over the source code')]
+ruffmt *ARGS:
+    ruff check --fix --select=I scripts
+    ruff check --fix --select=RUF022 scripts
+    ruff format {{ ARGS }} scripts
+    @echo -e "\e[1;32mruff format clean!\e[0m"
+
 [doc("Run just --fmt over the justfiles")]
 justfmt:
     just --unstable --fmt
@@ -30,7 +37,7 @@ justfmt:
 # {{{ linting
 
 [doc("Run all linting checks over the source code")]
-lint: typos reuse fortitude clippy
+lint: typos reuse fortitude clippy ruff
 
 [doc("Run typos over the source code and documentation")]
 typos format="brief":
@@ -51,6 +58,11 @@ fortitude:
 clippy:
     cargo clippy --all-targets
     @echo -e "\e[1;32m[rust] clippy clean!\e[0m"
+
+[doc('Run ruff checks over the source code')]
+ruff *ARGS:
+    ruff check {{ ARGS }}
+    @echo -e "\e[1;32mruff clean!\e[0m"
 
 # }}}
 # {{{ develop
